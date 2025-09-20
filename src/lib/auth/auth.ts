@@ -1,0 +1,80 @@
+'use server'
+
+import { isRedirectError } from "next/dist/client/components/redirect-error";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+
+type AuthHeaders = {
+    'Accept': 'application/json';
+    'Content-Type': 'application/json';
+    'Cookie': string;
+};
+
+export async function login(prevState: {error: string | null}, formData:FormData) {
+    const username = formData.get('username') as string;
+    const password = formData.get('password') as string;
+    if (!username || !password) {
+        return {error: "Username and password are required"}
+    }
+    try {
+        const credentials = Buffer.from(`${username}:${password}`).toString("base64");
+        const response = await fetch(`${process.env.OPENMRS_API_URL}/session`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Basic ${credentials}`
+            },
+        });
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.log({error: errorData.error.message})
+            return {error: 'Login failed. Please check your credentials.'};
+        }
+
+        const data = await response.json();
+        if (data.authenticated) {
+        const setCookieHeader = response.headers.get("set-cookie");
+        if (setCookieHeader) {
+            const match = /JSESSIONID=([^;]+)/.exec(setCookieHeader);
+            if (match) {
+            (await cookies()).set("JSESSIONID", match[1], {
+                httpOnly: true,
+                path: "/",
+                secure: process.env.NODE_ENV === "production",
+                maxAge: 1800,
+            });
+            }
+        }
+        redirect("/session-location");
+        } else {
+            return {error: 'Authentication failed. Please check your credentials.'};
+        }
+
+    } catch (error) {
+        if (isRedirectError(error)) {
+            throw error;
+        }
+        console.error('Login action error:', error);
+        return {error: 'An unexpected error occurred during login.'};
+    }
+
+}
+
+export async function getAuthHeaders(): Promise<AuthHeaders>{
+    const cookieStore = await cookies(); 
+    const jsessionid = cookieStore.get('JSESSIONID')?.value;
+
+    if (!jsessionid) {
+        throw new Error("Missing authentication session.");
+    }
+    
+    return {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Cookie': `JSESSIONID=${jsessionid}`,
+    };
+}
+
+export async function redirectToLogin() {
+    cookieStore.delete('JSESSIONID');
+    redirect('/login');
+}
