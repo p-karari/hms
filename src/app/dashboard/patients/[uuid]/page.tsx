@@ -1,56 +1,61 @@
+// uuid/page.tsx (PatientDashboardPage)
+
 'use client';
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { useParams, usePathname } from 'next/navigation';
-import PatientActions from '@/components/patients/PatientActions';
-import PatientDetails from '@/components/patients/PatientDetails';
+// 💡 NEW IMPORTS: Bring back PatientDetails for rendering here
+import PatientDetails from '@/components/patients/PatientDetails'; 
 import PatientEncounters from '@/components/patients/PatientEncounters';
 import PatientObservations from '@/components/patients/PatientObservations';
 import PatientVisits from '@/components/patients/PatientVisits';
-import PatientSubNav from '@/components/patients/PatientSubNav'; // The persistent sub-nav component
+import { Activity, AlertCircle } from 'lucide-react';
+import { getPatientActiveVisit } from '@/lib/visits/getActiveVisit';
 import { Visit } from '@/lib/patients/manageVisits';
+// Import the Provider component
+import { PatientDashboardProvider } from '@/components/context/patient-dashboard-context'; 
 
-// --- Placeholder Component Definitions (Replace with your actual components) ---
-// These interfaces and placeholders are necessary to make the dynamic mapping work.
 
+// --- TYPE DEFINITIONS (Unchanged) ---
 interface PatientContentProps {
   patientUuid: string;
   clinicalKey: string;
-  onActiveVisitChange?: (visit: Visit | null) => void;
+  onActiveVisitChange?: (visit: Visit | null) => void; 
 }
 
-// 1. Patient Summary: The default view, showing combined high-level data.
+// --- Component Definitions (Unchanged: PatientSummaryView, PlaceholderView, TabComponentMap) ---
 const PatientSummaryView: React.FC<PatientContentProps> = ({ patientUuid, clinicalKey }) => (
-    <div className="space-y-8">
-        <h2 className="text-2xl font-bold text-gray-800 border-b pb-2">Patient Summary Overview</h2>
-        <p className="text-gray-600 italic">This is the default view. It combines key data elements below.</p>
-        
-        {/* We reuse the Vitals component here for the summary view */}
-        <PatientObservations 
-            key={`${clinicalKey}-obs-summary`}
-            patientUuid={patientUuid} 
-        />
-        <div className="p-4 bg-red-50 rounded-lg">
-            <h3 className="font-semibold text-red-800">Active Conditions</h3>
-            <p className="text-sm">List of active conditions goes here.</p>
-        </div>
+  // ... (PatientSummaryView implementation) ...
+  <div className="space-y-4">
+    <div className="flex items-center gap-2 pb-2 border-b border-gray-200">
+      <Activity className="w-4 h-4 text-gray-600" />
+      <h2 className="text-sm font-semibold">Patient Summary</h2>
     </div>
+    
+    <PatientObservations 
+      key={`${clinicalKey}-obs-summary`}
+      patientUuid={patientUuid} 
+    />
+    
+    <div className="flex items-start gap-2 p-3 bg-red-50 rounded border border-red-200">
+      <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />
+      <div>
+        <h3 className="text-sm font-medium text-red-800">Active Conditions</h3>
+        <p className="text-xs text-red-600">No active conditions recorded</p>
+      </div>
+    </div>
+  </div>
 );
 
-// 2. Placeholder for Meds, Orders, Allergies, etc.
 const PlaceholderView: React.FC<{ title: string }> = ({ title }) => (
-    <div className="p-8 bg-gray-50 rounded-lg shadow-md border-t-4 border-indigo-500">
-        <h2 className="text-2xl font-bold text-gray-800">{title}</h2>
-        <p className="text-gray-500 mt-2">The dedicated content for the **{title}** section will load here.</p>
-    </div>
+  <div className="text-sm">
+    <h2 className="font-medium text-gray-900 mb-3 pb-2 border-b border-gray-200">{title}</h2>
+    <p className="text-gray-500 text-sm">Content for {title} will load here.</p>
+  </div>
 );
 
-// --- Content Component Mapping ---
-// Map the final URL segment to the component responsible for that content view.
 const TabComponentMap: Record<string, React.FC<PatientContentProps>> = {
-  // Key '/' handles the index path: /dashboard/patients/[uuid]
   '/': PatientSummaryView, 
-  // Map specific sub-paths to the relevant component
   '/vitals': PatientObservations,       
   '/medications': () => <PlaceholderView title="Medications" />,
   '/results': () => <PlaceholderView title="Lab Results" />,
@@ -62,22 +67,35 @@ const TabComponentMap: Record<string, React.FC<PatientContentProps>> = {
   '/attachments': () => <PlaceholderView title="Attachments" />,
   '/programs': () => <PlaceholderView title="Programs" />,
   '/appointments': () => <PlaceholderView title="Appointments" />,
-  // If the URL is something else, Encounters might be a good fallback
   '/encounters': PatientEncounters,
 };
 
-// --- Main Shell Component ---
+// -----------------------------------------------------------------------------------
 
-const PatientDashboardShell: React.FC = () => {
+const PatientDashboardPage: React.FC = () => {
   const params = useParams();
   const routerPathname = usePathname();
   const patientUuid = params.uuid as string;
 
-  // 1. State for Active Visit Management
   const [activeVisit, setActiveVisit] = useState<Visit | null>(null);
-  
-  // 2. State/Callback to trigger data reloads across components
   const [dataVersion, setDataVersion] = useState(0); 
+  const [isLoadingVisit, setIsLoadingVisit] = useState(true);
+
+  // --- State Management and Handlers (Unchanged) ---
+  useEffect(() => {
+    const fetchActiveVisitStatus = async () => {
+      setIsLoadingVisit(true);
+      try {
+        const visit = await getPatientActiveVisit(patientUuid);
+        setActiveVisit(visit);
+      } catch (error) {
+        console.error("Failed to fetch active visit status:", error);
+      } finally {
+        setIsLoadingVisit(false);
+      }
+    };
+    fetchActiveVisitStatus();
+  }, [patientUuid, dataVersion]);
 
   const handleActionComplete = useCallback(() => {
     setDataVersion(prev => prev + 1);
@@ -86,87 +104,75 @@ const PatientDashboardShell: React.FC = () => {
   const handleActiveVisitChange = useCallback((visit: Visit | null) => {
     setActiveVisit(visit);
   }, []);
+  // ---------------------------------------------------
 
   const clinicalKey = `${patientUuid}-clinical-${dataVersion}`;
-
-  // --- Dynamic Tab Content Logic (The core of layout persistence) ---
-  
-  // 1. Define the patient's base URL (e.g., /dashboard/patients/123-abc)
   const patientBaseUrl = `/dashboard/patients/${patientUuid}`;
   
-  // 2. Determine the path segment that controls the component to render.
   const currentPathSegment = useMemo(() => {
-    // 🎯 If the pathname is exactly the base URL, use the index key '/'
     if (routerPathname === patientBaseUrl || routerPathname === `${patientBaseUrl}/`) {
       return '/';
     }
-    
-    // 🎯 Otherwise, strip the base URL and find the first segment.
     const path = routerPathname.substring(patientBaseUrl.length).toLowerCase();
-    // Use regex to capture the segment after the first slash (e.g., /vitals from /vitals/history)
     const match = path.match(/^\/([^/]+)/);
-    
-    return match ? `/${match[1]}` : '/'; // Fallback to summary if no clear segment is found
-    
+    return match ? `/${match[1]}` : '/';
   }, [routerPathname, patientBaseUrl]);
   
-  // 3. Select the component from the map.
   const ActiveComponent = TabComponentMap[currentPathSegment] || PatientSummaryView;
 
-  // --- Render Layout ---
   return (
-    // This top-level component acts as the PERSISTENT SHELL. ---- mx-auto p-6 space-y-8 -- bg-gray-50
-    <div className="container  min-h-screen ">
-
-      {/* 1. Patient Sub-Navigation Tabs (PERSISTS) */}
-      {/* This component allows navigation to nested content routes. */}
-      <PatientSubNav patientUuid={patientUuid} />
-      
-      {/* 2. Patient Details Banner (PERSISTS) */}
-      <PatientDetails patientUuid={patientUuid} />
-      
-
-
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+    // 💡 FIX: Wrap the entire dynamic content AND PatientDetails in the Provider
+    <PatientDashboardProvider 
+      activeVisit={activeVisit} 
+      onActionComplete={handleActionComplete}
+    >
+      <div className="space-y-6"> {/* This content is the {children} in the layout */}
         
-        {/* Column 1: Actions (PERSISTS) */}
-        <div className="lg:col-span-1">
-          <PatientActions 
+        {/* 1. Patient Details: Rendered here to ensure it has context and is functional */}
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <PatientDetails 
             patientUuid={patientUuid}
-            activeVisit={activeVisit} 
-            onActionComplete={handleActionComplete} 
+            activeVisit={activeVisit} // Pass state directly for immediate availability
+            onActionComplete={handleActionComplete} // Pass handler
           />
         </div>
 
-        {/* Column 2: Dynamic Core Clinical Data (DYNAMIC CONTENT AREA) */}
-        <div className="lg:col-span-3 space-y-6">
-          
-          {/* Active Visit Banner (PERSISTS) */}
-          {activeVisit && (
-            <div className="p-4 bg-green-100 border-l-4 border-green-500 text-green-700 rounded-md shadow-sm">
-                <p className="font-bold">Current Active Visit:</p>
-                <p className="text-sm">
-                    {activeVisit.visitType.display} started at {new Date(activeVisit.startDatetime).toLocaleTimeString()}
-                </p>
+        {/* 2. Active Visit Banner (Relies on state) */}
+        {isLoadingVisit ? (
+            <div className="p-3 bg-gray-100 border border-gray-200 rounded-lg text-sm text-gray-600 animate-pulse">
+                Checking active visit status...
             </div>
-          )}
-          
-          {/* 🎯 ActiveComponent renders the content for the current tab only */}
+        ) : activeVisit ? (
+          <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            <div className="text-sm">
+              <span className="font-medium text-green-900">Active Visit: </span>
+              <span className="text-green-700">
+                {activeVisit.visitType.display} • {new Date(activeVisit.startDatetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            </div>
+          </div>
+        ) : (
+             <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+                No active visit. Start a new one to begin clinical actions.
+            </div>
+        )}
+        
+        {/* 3. Dynamic Content */}
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
           <ActiveComponent 
             patientUuid={patientUuid} 
             clinicalKey={clinicalKey} 
-            // Pass visit change handler only to components that manage visit state (Summary or Visits tab)
             onActiveVisitChange={
-                currentPathSegment === '/' || currentPathSegment === '/visits' 
-                ? handleActiveVisitChange 
-                : undefined
+              currentPathSegment === '/' || currentPathSegment === '/visits' 
+              ? handleActiveVisitChange 
+              : undefined
             }
           />
-          
         </div>
       </div>
-    </div>
+    </PatientDashboardProvider>
   );
 };
 
-export default PatientDashboardShell;
+export default PatientDashboardPage;
