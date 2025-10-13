@@ -1,6 +1,8 @@
 // app/dashboard/patients/register/page.tsx
 
-import { RegisterPatientForm } from "@/components/patients/PatientRegistrationForm";
+import RegisterPatientForm from "@/components/patients/PatientRegistrationForm";
+
+// import { RegisterPatientForm } from "@/components/patients/PatientRegistrationForm";
 
 
 // This is a Server Component that just holds the Client Form
