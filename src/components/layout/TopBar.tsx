@@ -8,7 +8,6 @@ import { logoutUser } from "@/lib/auth/logout";
 import { OpenMrsLocation, getLocations } from "@/lib/location/location";
 import { updateSessionLocation } from "@/lib/location/update-session-location"; 
 
-
 export function Topbar() {
   const sessionContext = useContext(SessionContext);
 
@@ -51,7 +50,6 @@ export function Topbar() {
     formData.append("locationUuid", locationUuid);
 
     try {
-      // Use the action dedicated to updating the client state without redirecting
       const newLocation = await updateSessionLocation(formData); 
       
       if (newLocation) {
@@ -70,39 +68,44 @@ export function Topbar() {
   };
 
   return (
-    <header className="border-b border-gray-200 h-16 flex items-center justify-between px-6 sticky top-0 z-10">
+    <header className="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-6 sticky top-0 z-10 shadow-sm">
       <div className="flex items-center">
-        <button className="text-gray-600 hover:text-indigo-600 md:hidden p-2">
+        <button className="text-gray-600 hover:text-blue-600 md:hidden p-2 rounded-xl transition-all duration-200 hover:bg-gray-100">
           <Menu className="w-6 h-6" />
         </button>
       </div>
 
-      <div className="flex items-center space-x-6">
+      <div className="flex items-center space-x-4">
+        {/* Location Selector */}
         <div className="relative">
           <button
             onClick={() => setIsLocationOpen(!isLocationOpen)}
-            className="flex items-center text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 p-2 rounded-lg transition"
+            className="flex items-center text-sm text-gray-700 bg-gray-50 hover:bg-gray-100 border border-gray-200 hover:border-gray-300 p-2 rounded-xl transition-all duration-200 group"
           >
-            <MapPin className="w-4 h-4 mr-2 text-indigo-500" />
-            <span>
-              {loadingLocations ? "Loading..." : currentLocation.display}
+            <MapPin className="w-4 h-4 mr-2 text-blue-600 transition-colors duration-200" />
+            <span className="font-medium">
+              {loadingLocations ? "Loading locations..." : currentLocation.display}
             </span>
             <ChevronDown
-              className={`w-4 h-4 ml-1 transition-transform ${
+              className={`w-4 h-4 ml-2 transition-all duration-200 text-gray-400 group-hover:text-gray-600 ${
                 isLocationOpen ? "rotate-180" : ""
               }`}
             />
           </button>
 
           {isLocationOpen && !loadingLocations && (
-            <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-xl z-20">
-              <div className="py-1">
+            <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-xl shadow-lg z-20 overflow-hidden">
+              <div className="p-2">
+                <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  Select Location
+                </div>
                 {availableLocations.map((location) => (
                   <button
                     key={location.uuid}
                     onClick={() => handleLocationChange(location.uuid)}
-                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-600"
+                    className="flex items-center w-full text-left px-3 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded-lg transition-all duration-150 group"
                   >
+                    <MapPin className="w-4 h-4 mr-3 text-gray-400 group-hover:text-blue-600 transition-colors duration-200" />
                     {location.display}
                   </button>
                 ))}
@@ -111,34 +114,42 @@ export function Topbar() {
           )}
         </div>
 
+        {/* User Menu */}
         <div className="relative">
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="flex items-center text-sm text-gray-700 hover:text-indigo-600 transition"
+            className="flex items-center text-sm text-gray-700 bg-gray-50 hover:bg-gray-100 border border-gray-200 hover:border-gray-300 p-2 rounded-xl transition-all duration-200 group"
           >
-            <User className="w-5 h-5 mr-2 text-gray-500" />
-            <span>{session.user.display}</span>
+            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center shadow-sm">
+              <User className="w-4 h-4 text-white" />
+            </div>
+            <span className="mx-3 font-medium">{session.user.display}</span>
             <ChevronDown
-              className={`w-4 h-4 ml-1 transition-transform ${
+              className={`w-4 h-4 transition-all duration-200 text-gray-400 group-hover:text-gray-600 ${
                 isMenuOpen ? "rotate-180" : ""
               }`}
             />
           </button>
 
           {isMenuOpen && (
-            <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-xl z-20">
-              <div className="py-1">
+            <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-xl shadow-lg z-20 overflow-hidden">
+              <div className="p-2">
+                <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  Account
+                </div>
                 <a
                   href="/profile"
-                  className="block px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-600"
+                  className="flex items-center px-3 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded-lg transition-all duration-150 group"
                 >
+                  <User className="w-4 h-4 mr-3 text-gray-400 group-hover:text-blue-600 transition-colors duration-200" />
                   View Profile
                 </a>
+                <div className="border-t border-gray-100 my-1"></div>
                 <button
                   onClick={handleLogout}
-                  className="flex items-center w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                  className="flex items-center w-full text-left px-3 py-2.5 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-all duration-150 group"
                 >
-                  <LogOut className="w-4 h-4 mr-2" />
+                  <LogOut className="w-4 h-4 mr-3 text-red-400 group-hover:text-red-600 transition-colors duration-200" />
                   Logout
                 </button>
               </div>
