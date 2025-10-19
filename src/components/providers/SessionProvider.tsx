@@ -8,14 +8,22 @@ interface LocationUpdate {
   display: string;
 }
 
+// Define the type for the serializable data passed from the server.
+// It omits BOTH functions: hasPrivilege and setSessionLocationContext.
+type SerializableSessionData = Omit<
+  SessionContextType,
+  "hasPrivilege" | "setSessionLocationContext"
+>;
+
 export function SessionProvider({
   children,
   initialSession,
 }: {
   children: React.ReactNode;
-  initialSession: Omit<SessionContextType, "hasPrivilege">; // exclude hasPrivilege, we’ll add it
+  initialSession: SerializableSessionData; // <--- UPDATED TYPE
 }) {
-  const [sessionState, setSessionState] = useState<Omit<SessionContextType, "hasPrivilege">>(initialSession);
+  // Use the serializable data type for the internal state
+  const [sessionState, setSessionState] = useState<SerializableSessionData>(initialSession);
 
   const setSessionLocationContext = useCallback(
     (location: LocationUpdate) => {
@@ -32,6 +40,7 @@ export function SessionProvider({
     [sessionState.privileges]
   );
 
+  // The context value is the full SessionContextType, combining the state and the functions.
   const contextValue: SessionContextType = {
     ...sessionState,
     hasPrivilege,
