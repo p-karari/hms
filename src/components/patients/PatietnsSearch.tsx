@@ -8,50 +8,37 @@ interface PatientSearchInputProps {
     isSearching: boolean;
 }
 
-/**
- * Client component providing the search input UI, decoupled from result rendering.
- */
 export function PatientSearchInput({ onSearch, isSearching }: PatientSearchInputProps) {
     const [query, setQuery] = useState('');
     
-    // Event handler for form submission
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
         const trimmedQuery = query.trim();
-        
-        if (!trimmedQuery) {
-             // If search is empty, we send an initial query signal (like '*') to reset to the default list
-            onSearch('*'); 
-            return;
-        }
-        
-        onSearch(trimmedQuery);
+        onSearch(trimmedQuery || '*');
     };
     
     return (
-        <div className="p-4 bg-white rounded-xl shadow-lg text-black">
-            <form onSubmit={handleSearch} className="flex space-x-4">
-                <input
-                    type="text"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Search by name or ID (or press enter for active list)..."
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-lg"
-                    disabled={isSearching}
-                />
-                <button
-                    type="submit"
-                    disabled={isSearching}
-                    className="flex items-center justify-center px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 disabled:bg-indigo-400 transition"
-                >
-                    {isSearching ? (
-                        <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                    ) : (
-                        <Search className="w-5 h-5 mr-2" />
-                    )}
-                    Search
-                </button>
-            </form>
-        </div>
+        <form onSubmit={handleSearch} className="flex gap-2 text-black">
+            <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search patients..."
+                className="flex-1 px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500"
+                disabled={isSearching}
+            />
+            <button
+                type="submit"
+                disabled={isSearching}
+                className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 disabled:bg-blue-400"
+            >
+                {isSearching ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                    <Search className="w-3 h-3" />
+                )}
+                Search
+            </button>
+        </form>
     );
 }
