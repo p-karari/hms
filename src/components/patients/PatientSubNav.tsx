@@ -13,14 +13,10 @@ import {
   Calendar,
   Layers,
   Archive,
-  FlaskConical, // Added FlaskConical here to fix the previous import pattern
+  FlaskConical,
 } from 'lucide-react';
 
-// --- Placeholder for Session/Privilege Context Hook ---
-// IMPORTANT: Replace this placeholder with your actual hook to get user privileges.
-// This structure assumes you get a list of privilege strings (e.g., ["View Observations", "Add Orders"]).
 const useSession = () => {
-  // Mocking the privileges of the Super User provided in your prompt for demonstration
   const superUserPrivileges = [
     'View Patients', 'Get Observations', 'Get Orders', 'Get Allergies', 
     'Get Conditions', 'Get Visits', 'View Encounters', 'Get Patient Programs',
@@ -28,8 +24,7 @@ const useSession = () => {
     'Get Concepts', 'View Observations', 'View Orders', 
     'Patient Dashboard - View Patient Summary', 
     'Patient Dashboard - View Overview Section',
-    'View Problems', // Used for Conditions
-    // Ensure all required privileges for the defined links are present for the Super User mock
+    'View Problems',
     'View Allergies', 
     'View Attachments',
     'View Patient Programs',
@@ -38,23 +33,21 @@ const useSession = () => {
   ];
   return { privileges: superUserPrivileges, isAuthenticated: true };
 };
-// ----------------------------------------------------
 
 interface PatientSubNavProps {
   patientUuid: string;
 }
 
-// Defines the structure and required privileges for each patient tab.
 const patientNavigationItems = [
   {
-    path: '', // Index page, e.g., /patients/[uuid]
+    path: '', // Index page - should be default active
     label: 'Summary',
     icon: FileText,
     requiredPrivilege: 'Patient Dashboard - View Patient Summary', 
   },
   {
     path: 'vitals',
-    label: 'Vitals & Biometrics',
+    label: 'Vitals',
     icon: HeartPulse,
     requiredPrivilege: 'View Observations', 
   },
@@ -78,7 +71,7 @@ const patientNavigationItems = [
   },
   {
     path: 'visits',
-    label: 'Visits & Encounters',
+    label: 'Visits',
     icon: Stethoscope,
     requiredPrivilege: 'View Encounters', 
   },
@@ -121,16 +114,10 @@ const patientNavigationItems = [
 ];
 
 const PatientSubNav: React.FC<PatientSubNavProps> = ({ patientUuid }) => {
-  // ❌ FIX: Using window.location.pathname as a fallback for usePathname
-  // This is safe because this component is marked 'use client'
   const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
-  
   const { privileges } = useSession(); 
-  
-  // Base URL for all patient links (e.g., /dashboard/patients/123-abc)
   const baseUrl = `/dashboard/patients/${patientUuid}`;
 
-  // Helper function to check if a user has a required privilege
   const hasRequiredPrivilege = (requiredPrivilege: string | undefined): boolean => {
     if (!requiredPrivilege) return true;
     return privileges.includes(requiredPrivilege);
@@ -140,30 +127,36 @@ const PatientSubNav: React.FC<PatientSubNavProps> = ({ patientUuid }) => {
     hasRequiredPrivilege(item.requiredPrivilege)
   );
 
+  // Improved active state detection
+  const getIsActive = (itemPath: string, href: string) => {
+    // For summary page (empty path)
+    if (itemPath === '') {
+      return pathname === baseUrl || pathname === `${baseUrl}/` || pathname === baseUrl;
+    }
+    
+    // For sub-pages - match exactly or as subpath
+    const normalizedPathname = pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;
+    const normalizedHref = href.endsWith('/') ? href.slice(0, -1) : href;
+    
+    return normalizedPathname === normalizedHref || 
+           normalizedPathname.startsWith(`${normalizedHref}/`);
+  };
+
   return (
-    // Horizontal Tab Bar Layout 
-    <nav className="border-b border-gray-200 bg-white sticky top-0 z-10 shadow-sm overflow-x-auto whitespace-nowrap">
-      <div className="flex items-center space-x-2 px-4 sm:px-6 md:px-8 py-2">
+    <nav className="border-b border-gray-200 bg-white overflow-x-auto">
+      <div className="flex items-center space-x-1 px-4 py-2 min-w-max">
         {filteredNavigation.map((item) => {
-          const href = `${baseUrl}/${item.path}`;
-          
-          // Determine if the current link is active.
-          // Handle the index path carefully: it should match the base URL exactly,
-          // but if it's not the index, it should match the start of the path.
-          const isIndexActive = item.path === '' && (pathname === baseUrl || pathname === `${baseUrl}/`);
-          const isSubPathActive = item.path !== '' && pathname.startsWith(href);
-          const isActive = isIndexActive || isSubPathActive;
+          const href = `${baseUrl}${item.path ? `/${item.path}` : ''}`;
+          const isActive = getIsActive(item.path, href);
 
           return (
-            // ❌ FIX: Using standard <a> tag instead of Next.js <Link>
-            // to avoid the dependency error.
-            <a key={item.path} href={href}>
+            <a key={item.path} href={href} className="block">
               <div
                 className={`
-                  flex items-center px-4 py-2 text-sm font-medium rounded-lg transition duration-150 ease-in-out cursor-pointer
+                  flex items-center px-3 py-2 text-sm font-medium rounded-md transition duration-150 ease-in-out cursor-pointer
                   ${isActive 
-                    ? 'bg-indigo-500 text-white shadow-md' 
-                    : 'text-gray-600 hover:bg-gray-100'
+                    ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-700' 
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                   }
                 `}
               >
