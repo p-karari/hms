@@ -1,300 +1,452 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { createRelationship, getRelationshipTypes } from "@/lib/relationships/createRelationship";
-import { createPatient } from "@/lib/patients/createPatient";
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { createPatient } from '@/lib/patients/createPatient';
+import { getRelationshipTypes } from '@/lib/relationships/createRelationship';
+import { User, Calendar, MapPin, Users, ChevronRight, ChevronLeft } from 'lucide-react';
 
-type RelationshipType = {
-  uuid: string;
-  display: string;
-};
+type RelationshipType = { uuid: string; display: string };
 
-// ✅ Utility function for converting age estimate → birthdate
-// Explanation: OpenMRS expects an ISO birthdate. This function subtracts the estimated years & months from today's date.
-function calculateEstimatedBirthdate(years: number, months: number): string {
-  const today = new Date();
-  today.setFullYear(today.getFullYear() - years);
-  today.setMonth(today.getMonth() - months);
-  return today.toISOString().split("T")[0]; // returns YYYY-MM-DD
-}
-
-export function RegisterPatientForm() {
+export default function RegisterPatientForm() {
   const router = useRouter();
-
   const [step, setStep] = useState(1);
-  const [relationshipTypes, setRelationshipTypes] = useState<RelationshipType[]>([]);
   const [loading, setLoading] = useState(false);
+  const [relationshipTypes, setRelationshipTypes] = useState<RelationshipType[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  // ✅ Added new fields for clarity (gender and unidentified flag retained)
+  // 🔹 Form state
   const [form, setForm] = useState({
-    givenName: "",
-    familyName: "",
-    gender: "",
-    birthdate: "",
-    estimatedYears: "",
-    estimatedMonths: "",
+    nameKnown: true,
+    givenName: '',
+    middleName: '',
+    familyName: '',
+    gender: '',
+    dobKnown: true,
+    birthdate: '',
+    estimatedYears: '',
+    estimatedMonths: '',
     unidentified: false,
+    address1: '',
+    cityVillage: '',
+    country: '',
+    phone: '',
   });
 
-  const [relatives, setRelatives] = useState([{ name: "", relationshipType: "" }]);
+  const [relationships, setRelationships] = useState([{ relativeUuid: '', relationshipType: '' }]);
 
-  // Fetch relationship types on mount
   useEffect(() => {
     (async () => {
       try {
-        const data = await getRelationshipTypes();
-        setRelationshipTypes(data?.results || []);
+        const res = await getRelationshipTypes();
+        setRelationshipTypes(res?.results || []);
       } catch {
-        setError("Failed to load relationship types");
+        setError('Failed to load relationship types');
       }
     })();
   }, []);
 
-  function handleNext() {
-    if (step < 3) setStep(step + 1);
-  }
+  const calculateEstimatedBirthdate = (years: number, months: number): string => {
+    const today = new Date();
+    today.setFullYear(today.getFullYear() - years);
+    today.setMonth(today.getMonth() - months);
+    return today.toISOString().split('T')[0];
+  };
 
-  function handlePrev() {
-    if (step > 1) setStep(step - 1);
-  }
+  const nextStep = () => setStep((s) => Math.min(s + 1, 3));
+  const prevStep = () => setStep((s) => Math.max(s - 1, 1));
 
-  function handleRelativeChange(index: number, field: string, value: string) {
-    const updated = [...relatives];
-    updated[index] = { ...updated[index], [field]: value };
-    setRelatives(updated);
-  }
-
-  function addRelative() {
-    setRelatives([...relatives, { name: "", relationshipType: "" }]);
-  }
-
-  function removeRelative(index: number) {
-    const updated = [...relatives];
-    updated.splice(index, 1);
-    setRelatives(updated);
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
     setLoading(true);
+    setError(null);
 
     try {
-      // ✅ If patient is unidentified, we auto-assign a placeholder name
-      let givenName = form.givenName.trim();
-      let familyName = form.familyName.trim();
-
-      if (form.unidentified) {
-        const timestamp = Date.now();
-        givenName = "UNKNOWN";
-        familyName = `PATIENT-${timestamp}`; // ensures uniqueness
-      }
-
-      // ✅ Birthdate logic
-      // If user provides an exact birthdate → use that
-      // If user provides estimated age → calculate estimated birthdate
-      let birthdate = form.birthdate;
-      let birthdateEstimated = false;
-
-      if (!birthdate && (form.estimatedYears || form.estimatedMonths)) {
-        const years = parseInt(form.estimatedYears || "0", 10);
-        const months = parseInt(form.estimatedMonths || "0", 10);
-        birthdate = calculateEstimatedBirthdate(years, months);
-        birthdateEstimated = true;
-      }
-
-      // ✅ Build FormData for backend submission
       const formData = new FormData();
-      formData.append("givenName", givenName);
-      formData.append("familyName", familyName);
-      formData.append("gender", form.gender || "U"); // U for Unknown
-      formData.append("birthdate", birthdate || "");
-      formData.append("birthdateEstimated", String(birthdateEstimated));
 
-      // ✅ Call your server action (auto-assigns location + identifier)
-      const patient = await createPatient(formData);
+      // 🧠 Name handling
+      const givenName = !form.nameKnown || form.unidentified ? 'UNKNOWN' : form.givenName.trim();
+      const familyName = !form.nameKnown || form.unidentified ? 'UNKNOWN' : form.familyName.trim();
 
-      // ✅ Create relationships for relatives (if any)
-      for (const rel of relatives) {
-        if (rel.name && rel.relationshipType) {
-          const relativePayload = new FormData();
-          relativePayload.append("uuid-of-patient", patient.person.uuid);
-          relativePayload.append("uuid-of-relative", rel.name);
-          relativePayload.append("uuid-of-relationship-type", rel.relationshipType);
-          await createRelationship(relativePayload);
-        }
+      formData.append('givenName', givenName);
+      formData.append('familyName', familyName);
+      formData.append('gender', form.gender || 'U');
+      formData.append('unidentified', String(form.unidentified));
+
+      // 🧠 Birthdate / age estimate logic
+      let birthdate = form.birthdate;
+      if (!form.dobKnown && (form.estimatedYears || form.estimatedMonths)) {
+        birthdate = calculateEstimatedBirthdate(
+          parseInt(form.estimatedYears || '0', 10),
+          parseInt(form.estimatedMonths || '0', 10)
+        );
       }
+      formData.append('birthdate', birthdate || '');
 
+      // 🧠 Optional contact details
+      formData.append('address1', form.address1);
+      formData.append('cityVillage', form.cityVillage);
+      formData.append('country', form.country);
+      formData.append('phone', form.phone);
+
+      const patient = await createPatient(formData);
       router.push(`/dashboard/patients/${patient.uuid}`);
-    } catch (error: unknown) {
-    let errorMessage: string;
-    
-    if (error instanceof Error) {
-        errorMessage = error.message;
-    } else if (typeof error === 'string') {
-        errorMessage = error;
-    } else {
-        errorMessage = "An unrecoverable error of unknown type occurred.";
-    }
-    if (error instanceof Error) {
-        errorMessage = error.message;
-    } else if (typeof error === 'string') {
-        errorMessage = error;
-    } else {
-        errorMessage = "An unrecoverable error of unknown type occurred.";
-    }
-      setError(errorMessage || "Registration failed");
+    } catch (err: unknown) {
+      console.error(err);
+      setError(err instanceof Error ? err.message : 'Registration failed');
     } finally {
       setLoading(false);
     }
-  }
+  };
+
+  // Step progress indicator
+  const steps = [
+    { number: 1, label: 'Basic Info', icon: <User className="w-4 h-4" /> },
+    { number: 2, label: 'Contact & Birth', icon: <Calendar className="w-4 h-4" /> },
+    { number: 3, label: 'Relationships', icon: <Users className="w-4 h-4" /> },
+  ];
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="max-w-2xl mx-auto p-6 bg-white rounded-2xl shadow-md space-y-8 text-black"
-    >
-      {/* Step 1 - Names & Gender */}
-      {step === 1 && (
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold text-gray-800">Patient Information</h2>
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={form.unidentified}
-              onChange={(e) => setForm({ ...form, unidentified: e.target.checked })}
-            />
-            <label className="text-sm text-gray-600">Unidentified patient</label>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8 px-4">
+      <form onSubmit={handleSubmit} className="max-w-4xl mx-auto bg-white rounded-2xl shadow-sm border border-gray-200 p-8 space-y-8">
+        {/* Header */}
+        <header className="text-center space-y-3">
+          <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto shadow-lg">
+            <User className="w-8 h-8 text-white" />
           </div>
-          {!form.unidentified && (
-            <>
-              <input
-                type="text"
-                placeholder="Given Name"
-                value={form.givenName}
-                onChange={(e) => setForm({ ...form, givenName: e.target.value })}
-                className="w-full p-2 border rounded"
-              />
-              <input
-                type="text"
-                placeholder="Family Name"
-                value={form.familyName}
-                onChange={(e) => setForm({ ...form, familyName: e.target.value })}
-                className="w-full p-2 border rounded"
-              />
-              <select
-                value={form.gender}
-                onChange={(e) => setForm({ ...form, gender: e.target.value })}
-                className="w-full p-2 border rounded"
-              >
-                <option value="">Select Gender</option>
-                <option value="M">Male</option>
-                <option value="F">Female</option>
-                <option value="O">Other</option>
-              </select>
-            </>
-          )}
-        </div>
-      )}
+          <h1 className="text-3xl font-bold text-gray-900">Patient Registration</h1>
+          <p className="text-gray-600">Complete all required fields to register a new patient</p>
+        </header>
 
-      {/* Step 2 - Birthdate */}
-      {step === 2 && (
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold text-gray-800">Birth Details</h2>
-          <label className="text-sm text-gray-600">Exact Birthdate</label>
-          <input
-            type="date"
-            value={form.birthdate}
-            onChange={(e) => setForm({ ...form, birthdate: e.target.value })}
-            className="w-full p-2 border rounded"
-          />
-          <p className="text-sm text-gray-500 text-center">or enter estimated age</p>
-          <div className="flex gap-3">
-            <input
-              type="number"
-              placeholder="Years"
-              value={form.estimatedYears}
-              onChange={(e) => setForm({ ...form, estimatedYears: e.target.value })}
-              className="w-1/2 p-2 border rounded"
-            />
-            <input
-              type="number"
-              placeholder="Months"
-              value={form.estimatedMonths}
-              onChange={(e) => setForm({ ...form, estimatedMonths: e.target.value })}
-              className="w-1/2 p-2 border rounded"
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Step 3 - Relatives */}
-      {step === 3 && (
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold text-gray-800">Relatives</h2>
-          {relatives.map((rel, index) => (
-            <div key={index} className="flex items-center gap-3 border p-3 rounded-md">
-              <input
-                type="text"
-                placeholder="Relative Name"
-                value={rel.name}
-                onChange={(e) => handleRelativeChange(index, "name", e.target.value)}
-                className="flex-1 p-2 border rounded"
-              />
-              <select
-                value={rel.relationshipType}
-                onChange={(e) => handleRelativeChange(index, "relationshipType", e.target.value)}
-                className="flex-1 p-2 border rounded"
-              >
-                <option value="">Select Relationship</option>
-                {relationshipTypes.map((type) => (
-                  <option key={type.uuid} value={type.uuid}>
-                    {type.display}
-                  </option>
-                ))}
-              </select>
-              {index > 0 && (
-                <button
-                  type="button"
-                  onClick={() => removeRelative(index)}
-                  className="text-red-500 hover:underline"
-                >
-                  Remove
-                </button>
+        {/* Progress Steps */}
+        <div className="flex items-center justify-center space-x-8">
+          {steps.map((stepItem, index) => (
+            <div key={stepItem.number} className="flex items-center space-x-4">
+              <div className={`flex items-center justify-center w-10 h-10 rounded-xl border-2 transition-all duration-200 ${
+                step >= stepItem.number 
+                  ? 'bg-blue-600 border-blue-600 text-white shadow-lg' 
+                  : 'bg-white border-gray-300 text-gray-400'
+              }`}>
+                {step > stepItem.number ? (
+                  <div className="w-4 h-4 bg-white rounded-full" />
+                ) : (
+                  stepItem.icon
+                )}
+              </div>
+              <span className={`text-sm font-medium ${
+                step >= stepItem.number ? 'text-blue-600' : 'text-gray-500'
+              }`}>
+                {stepItem.label}
+              </span>
+              {index < steps.length - 1 && (
+                <div className={`w-12 h-0.5 rounded ${
+                  step > stepItem.number ? 'bg-blue-600' : 'bg-gray-300'
+                }`} />
               )}
             </div>
           ))}
-          <button type="button" onClick={addRelative} className="px-4 py-2 bg-gray-100 border rounded">
-            + Add Relative
-          </button>
         </div>
-      )}
 
-      {/* Navigation Buttons */}
-      <div className="flex justify-between">
-        {step > 1 && (
-          <button type="button" onClick={handlePrev} className="px-4 py-2 bg-gray-200 rounded">
-            Back
-          </button>
+        {/* Error Display */}
+        {error && (
+          <div className="p-4 bg-red-50 border border-red-200 rounded-xl animate-pulse">
+            <p className="text-red-800 text-sm font-medium flex items-center justify-center gap-2">
+              <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clipRule="evenodd" />
+              </svg>
+              {error}
+            </p>
+          </div>
         )}
-        {step < 3 ? (
-          <button type="button" onClick={handleNext} className="px-4 py-2 bg-blue-600 text-white rounded">
-            Next
-          </button>
-        ) : (
-          <button
-            type="submit"
-            disabled={loading}
-            className="px-4 py-2 bg-green-600 text-white rounded disabled:opacity-50"
-          >
-            {loading ? "Registering..." : "Register Patient"}
-          </button>
-        )}
-      </div>
 
-      {error && <p className="text-red-500 text-center">{error}</p>}
-    </form>
+        {/* Step 1 – Basic Info */}
+        {step === 1 && (
+          <section className="space-y-6">
+            <div className="flex items-center space-x-3 pb-4 border-b border-gray-200">
+              <User className="w-6 h-6 text-blue-600" />
+              <h2 className="text-xl font-semibold text-gray-900">Basic Information</h2>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-3">
+                <label className="block text-sm font-semibold text-gray-900">Patient&apos;s Name is Known?</label>
+                <div className="flex gap-6">
+                  {['Yes', 'No'].map((opt) => (
+                    <label key={opt} className="flex items-center gap-3 cursor-pointer group">
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
+                        form.nameKnown === (opt === 'Yes') 
+                          ? 'bg-blue-600 border-blue-600' 
+                          : 'border-gray-300 group-hover:border-blue-400'
+                      }`}>
+                        {form.nameKnown === (opt === 'Yes') && (
+                          <div className="w-2 h-2 bg-white rounded-full" />
+                        )}
+                      </div>
+                      <span className="text-gray-700 font-medium">{opt}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {form.nameKnown && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <input
+                      type="text"
+                      placeholder="First Name *"
+                      value={form.givenName}
+                      onChange={(e) => setForm({ ...form, givenName: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white placeholder:text-gray-400 text-gray-900"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <input
+                      type="text"
+                      placeholder="Middle Name"
+                      value={form.middleName}
+                      onChange={(e) => setForm({ ...form, middleName: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white placeholder:text-gray-400 text-gray-900"
+                    />
+                  </div>
+                  <div>
+                    <input
+                      type="text"
+                      placeholder="Family Name *"
+                      value={form.familyName}
+                      onChange={(e) => setForm({ ...form, familyName: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white placeholder:text-gray-400 text-gray-900"
+                      required
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <select
+                  value={form.gender}
+                  onChange={(e) => setForm({ ...form, gender: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white text-gray-900"
+                  required
+                >
+                  <option value="">Select Gender *</option>
+                  <option value="M">Male</option>
+                  <option value="F">Female</option>
+                  <option value="O">Other</option>
+                  <option value="U">Unknown</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-6">
+              <button 
+                type="button" 
+                onClick={nextStep}
+                className="flex items-center space-x-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all duration-200 shadow-sm hover:shadow-md"
+              >
+                <span>Continue</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </section>
+        )}
+
+        {/* Step 2 – Contact + Birth */}
+        {step === 2 && (
+          <section className="space-y-6">
+            <div className="flex items-center space-x-3 pb-4 border-b border-gray-200">
+              <Calendar className="w-6 h-6 text-blue-600" />
+              <h2 className="text-xl font-semibold text-gray-900">Contact Details & Birth Information</h2>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-3">
+                <label className="block text-sm font-semibold text-gray-900">Date of Birth Known?</label>
+                <div className="flex gap-6">
+                  {['Yes', 'No'].map((opt) => (
+                    <label key={opt} className="flex items-center gap-3 cursor-pointer group">
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
+                        form.dobKnown === (opt === 'Yes') 
+                          ? 'bg-blue-600 border-blue-600' 
+                          : 'border-gray-300 group-hover:border-blue-400'
+                      }`}>
+                        {form.dobKnown === (opt === 'Yes') && (
+                          <div className="w-2 h-2 bg-white rounded-full" />
+                        )}
+                      </div>
+                      <span className="text-gray-700 font-medium">{opt}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {form.dobKnown ? (
+                <div>
+                  <input
+                    type="date"
+                    value={form.birthdate}
+                    onChange={(e) => setForm({ ...form, birthdate: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white text-gray-900"
+                    required
+                  />
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <input
+                      type="number"
+                      placeholder="Age (years) *"
+                      value={form.estimatedYears}
+                      onChange={(e) => setForm({ ...form, estimatedYears: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white placeholder:text-gray-400 text-gray-900"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <input
+                      type="number"
+                      placeholder="Months (optional)"
+                      value={form.estimatedMonths}
+                      onChange={(e) => setForm({ ...form, estimatedMonths: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white placeholder:text-gray-400 text-gray-900"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-4 pt-4">
+                <div className="flex items-center space-x-3">
+                  <MapPin className="w-5 h-5 text-gray-400" />
+                  <h3 className="text-lg font-medium text-gray-900">Contact Information (Optional)</h3>
+                </div>
+                
+                <div className="grid grid-cols-1 gap-4">
+                  <input
+                    type="text"
+                    placeholder="Address"
+                    value={form.address1}
+                    onChange={(e) => setForm({ ...form, address1: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white placeholder:text-gray-400 text-gray-900"
+                  />
+                  <input
+                    type="text"
+                    placeholder="City / Village"
+                    value={form.cityVillage}
+                    onChange={(e) => setForm({ ...form, cityVillage: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white placeholder:text-gray-400 text-gray-900"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Country"
+                    value={form.country}
+                    onChange={(e) => setForm({ ...form, country: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white placeholder:text-gray-400 text-gray-900"
+                  />
+                  <input
+                    type="tel"
+                    placeholder="Telephone"
+                    value={form.phone}
+                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white placeholder:text-gray-400 text-gray-900"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-between pt-6">
+              <button 
+                type="button" 
+                onClick={prevStep}
+                className="flex items-center space-x-2 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all duration-200"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                <span>Back</span>
+              </button>
+              <button 
+                type="button" 
+                onClick={nextStep}
+                className="flex items-center space-x-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all duration-200 shadow-sm hover:shadow-md"
+              >
+                <span>Continue</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </section>
+        )}
+
+        {/* Step 3 – Relationships */}
+        {step === 3 && (
+          <section className="space-y-6">
+            <div className="flex items-center space-x-3 pb-4 border-b border-gray-200">
+              <Users className="w-6 h-6 text-blue-600" />
+              <h2 className="text-xl font-semibold text-gray-900">Relationships (Optional)</h2>
+            </div>
+
+            <div className="space-y-4">
+              {relationships.map((rel, i) => (
+                <div key={i} className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                  <div>
+                    <input
+                      type="text"
+                      placeholder="Relative UUID"
+                      value={rel.relativeUuid}
+                      onChange={(e) => {
+                        const updated = [...relationships];
+                        updated[i].relativeUuid = e.target.value;
+                        setRelationships(updated);
+                      }}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white hover:bg-gray-50 placeholder:text-gray-400 text-gray-900"
+                    />
+                  </div>
+                  <div>
+                    <select
+                      value={rel.relationshipType}
+                      onChange={(e) => {
+                        const updated = [...relationships];
+                        updated[i].relationshipType = e.target.value;
+                        setRelationships(updated);
+                      }}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white hover:bg-gray-50 text-gray-900"
+                    >
+                      <option value="">Select Relationship</option>
+                      {relationshipTypes.map((r) => (
+                        <option key={r.uuid} value={r.uuid}>
+                          {r.display}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-between pt-6">
+              <button 
+                type="button" 
+                onClick={prevStep}
+                className="flex items-center space-x-2 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all duration-200"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                <span>Back</span>
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex items-center space-x-2 px-8 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Registering...</span>
+                  </>
+                ) : (
+                  <span>Register Patient</span>
+                )}
+              </button>
+            </div>
+          </section>
+        )}
+      </form>
+    </div>
   );
 }
