@@ -7,7 +7,7 @@ export interface Visit {
   patient: { uuid: string; display: string };
   visitType: { uuid: string; display: string };
   startDatetime: string;
-  stopDatetime?: string;
+  stopDatetime: string | null;
   location?: { uuid: string; display: string };
   voided?: boolean;
   voidReason?: string;
@@ -80,13 +80,15 @@ if (!res.ok) {
 /**
  * Update an existing visit by UUID.
  */
-export async function updateVisit(visitUuid: string, visit: Partial<Visit>): Promise<Visit | null> {
+export async function updateVisit(visitUuid: string, visit: Partial<Visit>): Promise<Visit> {
   let headers: Record<string, string>;
+  
   try {
     headers = await getAuthHeaders();
   } catch {
+    // If authentication fails, immediately redirect and throw a specific error
     redirectToLogin();
-    return null;
+    throw new Error("Authentication failed during visit update. Redirecting.");
   }
 
   try {
@@ -94,13 +96,24 @@ export async function updateVisit(visitUuid: string, visit: Partial<Visit>): Pro
       method: 'POST', // OpenMRS uses POST for updates
       headers: { ...headers, 'Content-Type': 'application/json' },
       body: JSON.stringify(visit),
+      cache: 'no-store', // Ensure the request is not cached
     });
 
-    if (!res.ok) throw new Error(`Failed to update visit: ${res.status}`);
-    return await res.json();
+    if (!res.ok) {
+      // 🛑 THROW the API-specific error, including the status and response body text
+      const errorText = await res.text();
+      console.error(`OpenMRS API Error ${res.status} for visit ${visitUuid}: ${errorText.substring(0, 100)}`);
+      throw new Error(`Failed to update visit: ${res.status} - ${errorText.substring(0, 50)}...`);
+    }
+    
+    // If successful (res.ok is true), return the updated data
+    return await res.json() as Visit;
+
   } catch (error) {
-    console.error('Error updating visit:', error);
-    return null;
+    // 🛑 Re-throw any caught error (Network, JSON parsing, or the API error above)
+    // This allows the client-side PatientActions component to catch the failure and display an error.
+    console.error('Critical network or processing error during visit update:', error);
+    throw error; 
   }
 }
 
@@ -130,3 +143,5 @@ export async function deleteVisit(visitUuid: string, reason: string = 'Deleted v
     return false;
   }
 }
+
+
