@@ -1,5 +1,5 @@
 // 1. Define the necessary interfaces first
-
+'use client'
 import { createContext } from "react";
 
 
