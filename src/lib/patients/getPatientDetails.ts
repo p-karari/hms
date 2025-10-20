@@ -38,6 +38,7 @@ export interface PatientDetailsType {
   identifiers: Identifier[];
   addresses: Address[];
   attributes: PersonAttribute[];
+  hasAllergies?: boolean;
   // Include name details which are part of the 'full' representation
   person: {
     names: { uuid: string; givenName: string; familyName: string; preferred: boolean }[];
