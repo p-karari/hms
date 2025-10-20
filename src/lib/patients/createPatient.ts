@@ -3,17 +3,37 @@
 import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { getAuthHeaders, redirectToLogin } from "../auth/auth";
 import { getOpenMRSSessionDetails } from "../openmrs-api/session";
-import getIdentifierTypes, { IdentifierType } from "../openmrs-api/getIdentifierTypes";
 
-/**
- * 🧠 Utility function to estimate a birthdate from an age input.
- * Converts numeric age (years, months) into a valid YYYY-MM-DD format string.
- */
+/** 🧠 Estimate birthdate from numeric age */
 function estimateBirthdate(ageYears: number, ageMonths: number = 0): string {
   const today = new Date();
   today.setFullYear(today.getFullYear() - ageYears);
   today.setMonth(today.getMonth() - ageMonths);
   return today.toISOString().split("T")[0];
+}
+
+/** 🧮 Generate a pseudo–Luhn-valid OpenMRS ID */
+function generateOpenMRSIdentifier(): string {
+  // Start with a random 7-digit number
+  const base = Math.floor(1000000 + Math.random() * 9000000).toString();
+  
+  // Compute check digit (Luhn Mod 30)
+  const chars = "0123456789ACDEFGHJKLMNPRTUVWXY";
+  let factor = 2;
+  let sum = 0;
+  const n = chars.length;
+  for (let i = base.length - 1; i >= 0; i--) {
+    const codePoint = chars.indexOf(base[i]);
+    let addend = factor * codePoint;
+    factor = factor === 2 ? 1 : 2;
+    addend = Math.floor(addend / n) + (addend % n);
+    sum += addend;
+  }
+  const remainder = sum % n;
+  const checkCodePoint = (n - remainder) % n;
+  const checkDigit = chars[checkCodePoint];
+  
+  return base + checkDigit;
 }
 
 interface AddressPayload {
@@ -35,27 +55,13 @@ interface PersonPayload {
   addresses?: AddressPayload[];
 }
 
-interface IdentifierPayload {
-  identifier: string;
-  identifierType: string | null;
-  location: string | null;
-  preferred: boolean;
-}
-
-interface PatientPayload {
-  person: PersonPayload;
-  identifiers: IdentifierPayload[];
-}
-
-// Assuming getIdentifierTypes returns a structure like:
-interface IdentifierTypesResponse {
-    results: IdentifierType[];
-}
-
+/** ✅ Manual static-identifier version with valid OpenMRS format */
 export async function createPatient(formData: FormData) {
-  const url = `${process.env.OPENMRS_API_URL}/patient`;
-  let headers: Record<string, string>;
+  const baseUrl = process.env.OPENMRS_API_URL;
+  const url = `${baseUrl}/patient`;
 
+  // ✅ Auth headers
+  let headers: Record<string, string>;
   try {
     headers = await getAuthHeaders();
   } catch {
@@ -63,40 +69,19 @@ export async function createPatient(formData: FormData) {
     return;
   }
 
-  // 🧠 Get current OpenMRS session to obtain the location UUID
-  const session = await getOpenMRSSessionDetails();
-  const locationUuid = session?.sessionLocation?.uuid || null;
+  // ✅ Optional context
+  await getOpenMRSSessionDetails();
 
-  // 🧠 Fetch all identifier types so we can automatically determine the correct type
-  // Casting the result to the expected response type
-  const identifierTypes = (await getIdentifierTypes()) as IdentifierTypesResponse | null;
-  let identifierTypeUuid: string | null = null;
-
-  if (identifierTypes?.results?.length) {
-    // Replace (t: any) with the specific interface IdentifierType
-    const openmrsIdType = identifierTypes.results.find(
-      (t: IdentifierType) =>
-        t.display.toLowerCase().includes("openmrs id") ||
-        t.display.toLowerCase().includes("openmrs identification number")
-    );
-    identifierTypeUuid = openmrsIdType?.uuid || null;
-  }
-
-  // 🧠 If none found, fail early with a clear message (for debugging)
-  if (!identifierTypeUuid) {
-    throw new Error("No valid Patient Identifier Type found (e.g., OpenMRS ID).");
-  }
-
-  // 🧠 Handle unidentified patient logic
+  // ✅ Handle unidentified patients
   const isUnidentified = formData.get("unidentified") === "true";
   const givenName = isUnidentified
     ? "UNKNOWN"
-    : formData.get("givenName")?.toString().trim();
+    : formData.get("givenName")?.toString().trim() || "";
   const familyName = isUnidentified
     ? "UNKNOWN"
-    : formData.get("familyName")?.toString().trim();
+    : formData.get("familyName")?.toString().trim() || "";
 
-  // 🧠 Handle estimated age input
+  // ✅ Birthdate logic
   const birthdate =
     formData.get("birthdate")?.toString() ||
     (formData.get("ageYears") || formData.get("ageMonths")
@@ -107,13 +92,26 @@ export async function createPatient(formData: FormData) {
       : undefined);
 
   const birthdateEstimated =
-    !formData.get("birthdate") && (formData.get("ageYears") || formData.get("ageMonths"))
+    !formData.get("birthdate") &&
+    (formData.get("ageYears") || formData.get("ageMonths"))
       ? true
       : false;
 
-  // 🧠 Build person object
+  // ✅ Gender normalization
+  const genderRaw = formData.get("gender")?.toString().toLowerCase();
+  const gender =
+    genderRaw === "male"
+      ? "M"
+      : genderRaw === "female"
+      ? "F"
+      : genderRaw === "other"
+      ? "O"
+      : "U";
+
+  // ✅ Build the person object
   const person: PersonPayload = {
-    gender: formData.get("gender")?.toString(),
+    names: givenName && familyName ? [{ givenName, familyName }] : undefined,
+    gender,
     birthdate,
     birthdateEstimated,
     addresses: [
@@ -125,23 +123,18 @@ export async function createPatient(formData: FormData) {
     ],
   };
 
-  if (givenName && familyName) {
-    person.names = [{ givenName, familyName }];
-  }
+  // ✅ Identifier Type UUID (OpenMRS ID)
+  const identifierTypeUuid = "05a29f94-c0ed-11e2-94be-8c13b969e334";
 
-  // 🧠 Generate a unique fallback identifier
-  const generatedIdentifier = isUnidentified
-    ? `UNKNOWN-${Date.now()}-${Math.floor(Math.random() * 1000)}`
-    : formData.get("identifier")?.toString() || `TEMP-${Date.now()}`;
+  // ✅ Generate valid OpenMRS-style identifier
+  const validIdentifier = generateOpenMRSIdentifier();
 
-  // 🧠 Construct the final OpenMRS-compliant payload
-  const NewPatientPayload: PatientPayload = {
+  const newPatientPayload = {
     person,
     identifiers: [
       {
-        identifier: generatedIdentifier,
         identifierType: identifierTypeUuid,
-        location: locationUuid,
+        identifier: validIdentifier,
         preferred: true,
       },
     ],
@@ -155,28 +148,27 @@ export async function createPatient(formData: FormData) {
         "Content-Type": "application/json",
         Accept: "application/json",
       },
-      body: JSON.stringify(NewPatientPayload),
+      body: JSON.stringify(newPatientPayload),
     });
 
     if (!response.ok) {
-      if (response.status === 401 || response.status === 403) {
-        redirectToLogin();
-      }
+      if (response.status === 401 || response.status === 403) redirectToLogin();
       const errorDetail = await response.text();
-      throw new Error(`Registration failed: ${errorDetail.substring(0, 200)}...`);
+      throw new Error(`Registration failed: ${errorDetail.substring(0, 300)}...`);
     }
 
-    return await response.json();
-  } catch (error: unknown) { // Use unknown for the catch block variable
+    const json = await response.json();
+    return json;
+  } catch (error: unknown) {
     if (isRedirectError(error)) throw error;
-    
-    // Safely log the error detail using type narrowing
-    if (error instanceof Error) {
-        console.error("Error creating patient:", error.message);
-    } else {
-        console.error("Error creating patient (unknown type):", error);
-    }
-    
-    throw new Error("Could not register patient due to a network or server issue.");
+
+    if (error instanceof Error)
+      console.error("Error creating patient:", error.message);
+    else
+      console.error("Error creating patient (unknown type):", error);
+
+    throw new Error(
+      "Could not register patient due to a network or server issue."
+    );
   }
 }
