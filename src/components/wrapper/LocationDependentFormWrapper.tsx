@@ -4,7 +4,7 @@ import React, { useContext, useState, useEffect } from 'react';
 import { SessionContext } from '../../lib/context/session-context'; 
 import { AlertTriangle, MapPin, Loader2, Hospital } from 'lucide-react'; // 🎯 Added Hospital icon
 import VitalsFormFields from '../vitals/VitalsFormFields';
-import { getActiveVisit } from '@/lib/visits/getActiveVisit';
+import { getPatientActiveVisit } from '@/lib/visits/getActiveVisit';
 
 // 🎯 CRITICAL: Assuming this utility exists and performs the necessary API call
 // import { getActiveVisit } from '../../lib/visits/visit'; 
@@ -61,7 +61,7 @@ export default function LocationDependentFormWrapper({
                 setVisitError(null);
                 try {
                     // Assuming getActiveVisit(patientUuid) is an async function
-                    const visit = await getActiveVisit(patientUuid);
+                    const visit = await getPatientActiveVisit(patientUuid);
                     setActiveVisitUuid(visit?.uuid || null);
                 } catch (error: unknown) {
                     let errorMessage: string;
