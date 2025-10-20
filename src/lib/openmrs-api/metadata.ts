@@ -94,9 +94,16 @@ export async function fetchAllRolesForForm(): Promise<OpenMRSRole[]> {
     }
 }
 
-// NOTE: Running this here will execute the fetch and print to the terminal on server startup
-const roles = await fetchAllRolesForForm(); 
-console.log("All Roles in system: ", roles);
+// NOTE: Avoid running `fetchAllRolesForForm()` at module initialization time.
+// Calling data-fetching functions that rely on per-request state (like
+// `cookies()` inside `getAuthHeaders`) during module evaluation will cause
+// the runtime error: "`cookies` was called outside a request scope" during
+// build or server startup. Keep metadata fetches inside request-scoped server
+// components or functions that are invoked per-request.
+
+// If you want to warm a cache at startup, move that logic to a dedicated
+// server startup script or an API route that runs within a valid request
+// context.
 
 
 /**
