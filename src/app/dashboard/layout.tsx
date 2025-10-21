@@ -5,8 +5,6 @@ import { Topbar } from "@/components/layout/TopBar";
 import { SessionProvider } from "@/components/providers/SessionProvider";
 import { getOpenMRSSessionDetails, getPrivilegesForUser } from "@/lib/openmrs-api/session";
 
-// NOTE: It's a nested layout, so we'll rename the component to DashboardLayout 
-// for conceptual clarity, though the export default is what matters.
 export default async function DashboardLayout({ 
   children,
 }: Readonly<{
@@ -19,39 +17,32 @@ export default async function DashboardLayout({
     ? await getPrivilegesForUser(session.user.uuid)
     : [];
   
-  // FIX: Explicitly include a placeholder for the required setter function 
-  // to satisfy the Omit<SessionContextType, "hasPrivilege"> type check.
   const initialSession = {
     ...coreData,
     privileges,
     isAuthenticated: coreData.authenticated,
-    
-    // This no-op function is added solely to make TypeScript happy, 
-    // as the real function is created inside SessionProvider.
-    setSessionLocationContext: () => {}, 
   };
   
   return (
     <SessionProvider initialSession={initialSession}>
       
-      {/* Main Dashboard Layout Structure (Flex Container) */}
-      {/* Removed w-[25rem] to allow the layout to use the full screen width */}
-      <div className="flex min-h-screen w-full">
+      {/* Main Dashboard Layout Structure */}
+      <div className="flex min-h-screen w-full bg-gray-50">
         
-        {/* 1. Sidebar Component (Fixed on the left, but takes up NO space in flow) */}
+        {/* Fixed Sidebar */}
         <DashboardSidebar /> 
 
-        {/* Content Area (Requires Margin Offset) */}
-        {/* FIX: Added ml-64 (margin-left: 16rem) to push content past the fixed sidebar. */}
-        <div className="flex-1 flex flex-col ml-64">
+        {/* Content Area - Adjusted for sidebar width */}
+        <div className="flex-1 flex flex-col ml-64 min-w-0">
           
-          {/* 2. Topbar Component */}
-          {/* Topbar will now start exactly where the main content begins (ml-64) */}
+          {/* Sticky Topbar */}
           <Topbar /> 
           
-          {/* 3. Main Content Wrapper */}
-          <main className="flex-1 p-6 overflow-y-auto">
-            {children} {/* This renders the content of pages like /dashboard/patients */}
+          {/* Main Content Area with proper padding and constraints */}
+          <main className="flex-1  overflow-y-auto">
+            <div className="max-w-7xl w-full">
+              {children}
+            </div>
           </main>
         </div>
       </div>
