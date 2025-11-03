@@ -14,7 +14,6 @@ import {
     NewConditionSubmissionData 
 } from '@/lib/conditions/submitPatientCondition';
 import { getActiveEncounterUuid } from '@/lib/encounters/getActiveEncounterUuid';
-// import { getActiveEncounterUuid } from '@/lib/orders/getActiveEncounterUuid'; // Reusing for context
 
 interface ConditionsDashboardProps {
     patientUuid: string;
