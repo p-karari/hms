@@ -1,0 +1,182 @@
+Set Up an Instance of O3
+
+
+
+By Grace Potma
+
+9 min
+
+Add a reaction
+In this page:
+
+Using the OpenMRS SDK
+Using Docker
+Updating metadata
+Preparing for production
+Next steps
+Useful links
+This guide is intended for developers who want to set up an instance of O3. Broadly speaking, there are two approaches for setting up an instance of O3:
+
+Using the OpenMRS SDK
+
+Using Docker
+
+Using the OpenMRS SDK
+You might want to use the SDK if:
+
+You already have the SDK, Maven and a Java environment set up on your machine and are very familiar with these tools.
+
+You're not familiar with Docker or don't want to use Docker.
+
+Prerequisites
+These prerequisites are explained in detail in the SDK wiki(opens in a new tab).
+
+Ensure you have Apache Maven(opens in a new tab) installed.
+
+Ensure you have MySQL v5.6 and above installed and set up correctly.
+
+Ensure you have Java 8 installed with JDK 1.8 and JRE 1.8.
+
+Ensure that your $JAVA_HOME environment variable is set and that it points to v1.8 of Java. If you have the correct version of Java installed but $JAVA_HOME doesn't point to it, you could try adding the following alias to your .zshrc file (or .bashrc file if you're using Bash):
+
+
+
+  alias mvn='JAVA_HOME="$(/usr/libexec/java_home -v 1.8)" mvn'
+Step 1
+Run the following command to install the latest version of the OpenMRS SDK. If you've already installed the SDK, you can skip this step.
+
+
+
+mvn org.openmrs.maven.plugins:openmrs-sdk-maven-plugin:setup-sdk
+Step 2
+Run the following command to setup the SDK:
+
+
+
+mvn openmrs-sdk:setup
+This command will run a prompt that walks you through choosing:
+
+A server ID e.g. o3-distro.
+
+The type of server to set up - choose O3 Distribution.
+
+What version of O3 to deploy - choose Reference Application 3.0.0-SNAPSHOT.
+
+Which port to run the server on (defaults to 8080).
+
+Whether or not to enable remote debugging (defaults to no debugging)
+
+When asked to choose which database to use. Choose MySQL 5.6 and above (requires pre-installed MySQL 5.6 and above). This step is contingent on you having set up your MySQL installation up correctly.
+
+When asked to choose a MySQL database URI, go with the default database URI presented.
+
+When asked to specify your database username, specify whatever you chose when setting up your MySQL installation (defaults to root).
+
+When asked to enter your database password, enter your database password.
+
+Once you're connected to the database, select the JDK version you'd like to use to run the server (e.g. whatever JAVA_HOME points to).
+
+Step 3
+Run the following command to fire up the SDK:
+
+
+
+mvn openmrs-sdk:run
+Step 4
+Navigate to https://localhost:8080/openmrs on your browser. You should expect the see the backend getting set up. Once that completes, you can navigate to https://localhost:8080/openmrs/spa.
+
+Troubleshooting the SDK approach
+If you're running into issues, first ensure that you're running the prescribed dependency versions i.e. Java 8, MySQL 5.6 or greater, Maven 3, and the latest SDK version.
+
+
+
+
+
+
+--------------------------
+
+
+Running the openmrs on vps - 
+
+sudo systemctl daemon-reload
+sudo systemctl enable openmrs
+sudo systemctl start openmrs
+-----------------------------------------------------------
+
+
+instructions 
+
+Perfect 👍 — here’s exactly how to set up OpenMRS SDK to run as a **background systemd service** on your VPS:
+
+---
+
+### ⚙️ 1. Create a systemd service file
+
+Run this command:
+
+```bash
+sudo nano /etc/systemd/system/openmrs.service
+```
+
+Then paste the following (edit the path to match your setup if needed):
+
+```ini
+[Unit]
+Description=OpenMRS SDK Server
+After=network.target
+
+[Service]
+User=root
+WorkingDirectory=/root/openmrs/server
+ExecStart=/usr/bin/mvn openmrs-sdk:run -DserverId=server
+Restart=always
+RestartSec=10
+StandardOutput=append:/var/log/openmrs.log
+StandardError=append:/var/log/openmrs-error.log
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Save and exit (`CTRL+O`, `ENTER`, `CTRL+X`).
+
+---
+
+### 🚀 2. Reload and start the service
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable openmrs
+sudo systemctl start openmrs
+```
+
+---
+
+### 🔍 3. Check its status
+
+```bash
+sudo systemctl status openmrs
+```
+
+If you see “Active: running”, you’re good to go ✅
+
+---
+
+### 📄 4. (Optional) View logs
+
+To follow logs in real time:
+
+```bash
+sudo journalctl -u openmrs -f
+```
+
+---
+
+After this, your **OpenMRS SDK instance will auto-start on boot**, run continuously, and your frontend can always access it via your VPS IP (e.g., `http://your-vps-ip:8080/openmrs`).
+
+Would you like me to confirm the exact `ExecStart` path using your current directory structure before you create the file?
+
+
+
+
+
