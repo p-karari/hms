@@ -40,13 +40,12 @@ async function getConceptSetMembersByName(conceptSetName: string, headers: Recor
     const searchResponse = await fetch(searchUrl, { headers, cache: 'force-cache' });
 
     if (!searchResponse.ok) {
-        // Use separate handler to prevent aborting the entire Promise.all
         await handleApiError(searchResponse, `Search for ${conceptSetName}`);
         return [];
     }
 
     const searchData: { results: Array<{ uuid: string }> } = await searchResponse.json();
-    const parentConcept = searchData.results.find(c => c.uuid.length > 0); // Find first non-empty result
+    const parentConcept = searchData.results.find(c => c.uuid.length > 0);
 
     if (!parentConcept) {
         console.warn(`Concept Set not found for name: ${conceptSetName}`);
@@ -64,13 +63,47 @@ async function getConceptSetMembersByName(conceptSetName: string, headers: Recor
 
     const membersData: any = await membersResponse.json();
     
-    // Map the setMembers to the required DosingConceptOption structure
     return (membersData.setMembers || []).map((item: any) => ({
         uuid: item.uuid,
         display: item.display
     }));
 }
 
+// --- Helper to search individual frequency concepts case-insensitively ---
+async function searchFrequencyConcepts(headers: Record<string, string>): Promise<DosingConceptOption[]> {
+    const apiBaseUrl = process.env.OPENMRS_API_URL;
+    const searchTerms = [
+        "once daily", "daily", "twice daily", "three times daily", "every 8 hours",
+        "every 12 hours", "every 6 hours", "every 24 hours", "weekly",
+        "monthly", "as needed", "prn", "every other day"
+    ];
+
+    const searchPromises = searchTerms.map(async term => {
+        const encoded = encodeURIComponent(term);
+        const res = await fetch(`${apiBaseUrl}/concept?q=${encoded}&v=full`, { headers, cache: 'no-store' });
+        if (!res.ok) return [];
+
+        const data = await res.json();
+        return (data.results || []).filter((c: any) => {
+            const display = (c.display || '').toLowerCase();
+            const t = term.toLowerCase();
+            return display.includes(t) || t.includes(display);
+        }).map((c: any) => ({ uuid: c.uuid, display: c.display }));
+    });
+
+    const results = await Promise.all(searchPromises);
+    const flattened = results.flat();
+
+    // Deduplicate by UUID
+    const seen = new Set();
+    const deduped = flattened.filter(item => {
+        if (seen.has(item.uuid)) return false;
+        seen.add(item.uuid);
+        return true;
+    });
+
+    return deduped;
+}
 
 export async function getDosingConceptLists(): Promise<DosingConceptLists> {
     let headers: Record<string, string>;
@@ -81,10 +114,9 @@ export async function getDosingConceptLists(): Promise<DosingConceptLists> {
         return { doseUnits: [], routes: [], frequencies: [], quantityUnits: [] };
     }
     
-    // --- Configuration: We now use the standard display names ---
     const conceptSetsToFetch = {
-        doseUnits: "Drug Dosing Units",
-        routes: "Route of Administration",
+        doseUnits: "Dosing unit",
+        routes: "Routes of administration",
         frequencies: "Dosing Frequency",
         quantityUnits: "Dispensing Units",
     };
@@ -100,11 +132,16 @@ export async function getDosingConceptLists(): Promise<DosingConceptLists> {
 
     const results = await Promise.all(conceptPromises);
 
-    // Reassemble the results into the final structured object
     const finalLists: DosingConceptLists = results.reduce((acc, result) => {
         acc[result.key] = result.data;
         return acc;
     }, {} as DosingConceptLists);
+
+    // If no "Dosing Frequency" concept set found, try searching individual frequency terms
+    if (!finalLists.frequencies || finalLists.frequencies.length === 0) {
+        console.warn('No "Dosing Frequency" concept set found — performing individual frequency search...');
+        finalLists.frequencies = await searchFrequencyConcepts(headers);
+    }
 
     return finalLists;
 }
