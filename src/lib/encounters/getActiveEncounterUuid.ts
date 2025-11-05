@@ -41,7 +41,7 @@ export async function getActiveEncounterUuid(patientUuid: string): Promise<strin
     // In many distributions, an encounter is considered active if 'stopDate' or 'endDate' is null.
     // The OpenMRS REST endpoint for /encounter doesn't natively support filtering by a null end date
     // or by 'active' status, so we fetch the most recent and check client-side.
-    const url = `${process.env.OPENMRS_API_URL}/encounter?patient=${patientUuid}&v=custom:(uuid,encounterDatetime,encounterType,stopDate)&limit=1&s=byDateDesc`;
+    const url = `${process.env.OPENMRS_API_URL}/encounter?patient=${patientUuid}&v=custom:(uuid,encounterDatetime,encounterType,visit:(uuid,stopDatetime))&limit=1`;
 
     try {
         const jsessionidValue = await authenticateAndGetSessionId();
