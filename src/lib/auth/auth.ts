@@ -40,7 +40,7 @@ export async function login(prevState: {error: string | null}, formData:FormData
                 httpOnly: true,
                 path: "/",
                 secure: process.env.NODE_ENV === "production",
-                maxAge: 1800,
+                maxAge: 18000,
             });
             }
         }

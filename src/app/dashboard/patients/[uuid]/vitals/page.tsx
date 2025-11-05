@@ -9,9 +9,8 @@ import { getPatientObservations, Observation } from '@/lib/patients/getPatientOb
 import { getPatientActiveVisit } from '@/lib/visits/getActiveVisit';
 import { Visit } from '@/lib/patients/manageVisits';
 import PatientDetails from '@/components/patients/PatientDetails';
-import { PatientDashboardProvider } from '@/components/context/patient-dashboard-context';
+import { Activity, Scale, TrendingUp } from 'lucide-react';
 
-// --- TYPE DEFINITIONS ---
 export interface VitalSign {
   date: string;
   encounterUuid: string;
@@ -26,35 +25,23 @@ export interface VitalSign {
   bmi?: number;
 }
 
-// --- UTILS ---
 const getDaysOld = (isoString: string): string => {
-  const observationDate = new Date(isoString).getTime();
-  const today = new Date().getTime();
-  const diffTime = Math.abs(today - observationDate);
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  if (diffDays === 0) return 'less than 1 day old';
-  if (diffDays === 1) return '1 day old';
-  return `${diffDays} days old`;
+  const diffDays = Math.ceil(Math.abs(Date.now() - new Date(isoString).getTime()) / (1000 * 60 * 60 * 24));
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return '1 day ago';
+  return `${diffDays} days ago`;
 };
 
 const formatVitalDate = (isoString: string) => {
-  const date = new Date(isoString);
-  const options: Intl.DateTimeFormatOptions = {
+  return new Date(isoString).toLocaleDateString('en-GB', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
-    hour12: true,
-  };
-  return date
-    .toLocaleDateString('en-GB', options)
-    .replace(/,/g, '')
-    .replace(/\s/g, '—')
-    .replace('—', ', ');
+  });
 };
 
-// --- PROCESSING LOGIC ---
 async function processVitals(
   rawObservations: Observation[],
   conceptMap: Record<string, string>
@@ -93,35 +80,21 @@ async function processVitals(
   return finalVitals;
 }
 
-// --- MAIN PAGE COMPONENT ---
 export default function VitalsPage({ params }: { params: { uuid: string } }) {
   const patientUuid = params.uuid;
   const [activeVisit, setActiveVisit] = useState<Visit | null>(null);
-  const [isLoadingVisit, setIsLoadingVisit] = useState(true);
   const [vitalsHistory, setVitalsHistory] = useState<VitalSign[]>([]);
-  const [error, setError] = useState<string | null>(null);
- console.log(error);
+
   const fetchData = useCallback(async () => {
     try {
-      setIsLoadingVisit(true);
       const visit = await getPatientActiveVisit(patientUuid);
       setActiveVisit(visit);
     } catch (err) {
       console.error('Failed to fetch active visit:', err);
-    } finally {
-      setIsLoadingVisit(false);
     }
 
     try {
-      const [
-        conceptWeightUuid,
-        conceptHeightUuid,
-        conceptTempUuid,
-        conceptSystolicUuid,
-        conceptDiastolicUuid,
-        conceptPulseUuid,
-        conceptRespRateUuid,
-      ] = await Promise.all([
+      const conceptUuids = await Promise.all([
         getConceptUuid('Weight (kg)'),
         getConceptUuid('Height (cm)'),
         getConceptUuid('Temparature (c)'),
@@ -131,22 +104,21 @@ export default function VitalsPage({ params }: { params: { uuid: string } }) {
         getConceptUuid('Respiratory rate'),
       ]);
 
-      const conceptUuids = {
-        WEIGHT: conceptWeightUuid,
-        HEIGHT: conceptHeightUuid,
-        TEMP: conceptTempUuid,
-        SYSTOLIC_BP: conceptSystolicUuid,
-        DIASTOLIC_BP: conceptDiastolicUuid,
-        PULSE: conceptPulseUuid,
-        RESP_RATE: conceptRespRateUuid,
+      const conceptMap = {
+        WEIGHT: conceptUuids[0],
+        HEIGHT: conceptUuids[1],
+        TEMP: conceptUuids[2],
+        SYSTOLIC_BP: conceptUuids[3],
+        DIASTOLIC_BP: conceptUuids[4],
+        PULSE: conceptUuids[5],
+        RESP_RATE: conceptUuids[6],
       };
 
       const rawObservations = await getPatientObservations(patientUuid);
-      const vitals = await processVitals(rawObservations, conceptUuids);
+      const vitals = await processVitals(rawObservations, conceptMap);
       setVitalsHistory(vitals);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Vitals loading error:', err);
-      setError('Failed to load vitals data.');
     }
   }, [patientUuid]);
 
@@ -159,215 +131,139 @@ export default function VitalsPage({ params }: { params: { uuid: string } }) {
   }, [fetchData]);
 
   const latestVitals = vitalsHistory[0] || {};
-  const latestDateString = latestVitals.date ? formatVitalDate(latestVitals.date) : 'N/A';
-
 
   return (
-    <PatientDashboardProvider activeVisit={activeVisit} onActionComplete={handleActionComplete}>
-      <div className="bg-gray-50 min-h-screen">
-        <div className="p-8 space-y-6">
-          {/* --- PATIENT DETAILS CARD --- */}
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
-            <PatientDetails
-              patientUuid={patientUuid}
-              activeVisit={activeVisit}
-              onActionComplete={handleActionComplete}
-            />
+    <div className="min-h-screen bg-white">
+      <div className="p-4 space-y-4">
+        {/* Patient Details - Preserved exactly as requested */}
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <PatientDetails
+            patientUuid={patientUuid}
+            activeVisit={activeVisit}
+            onActionComplete={handleActionComplete}
+          />
+        </div>
+
+        {/* Active Visit Status */}
+        {activeVisit && (
+          <div className="flex items-center gap-2 p-2 bg-green-50 border border-green-200 rounded text-sm">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            <span className="text-green-700">
+              Active Visit • {new Date(activeVisit.startDatetime).toLocaleTimeString([], { 
+                hour: '2-digit', minute: '2-digit' 
+              })}
+            </span>
           </div>
+        )}
 
-          {/* --- ACTIVE VISIT STATUS --- */}
-          {isLoadingVisit ? (
-            <div className="p-3 bg-gray-100 border border-gray-200 rounded-lg text-sm text-gray-600 animate-pulse">
-              Checking active visit status...
-            </div>
-          ) : activeVisit ? (
-            <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <div className="text-sm">
-                <span className="font-medium text-green-900">Active Visit: </span>
-                <span className="text-green-700">
-                  {activeVisit.visitType.display} •{' '}
-                  {new Date(activeVisit.startDatetime).toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </span>
-              </div>
-            </div>
-          ) : (
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
-              No active visit. Start a new one to begin clinical actions.
-            </div>
-          )}
-
-          {/* --- HEADER --- */}
-          <div className="flex justify-between items-start border-b pb-4">
-            <div>
-              <h1 className="text-3xl font-light text-gray-900">Vitals and Biometrics</h1>
-              <p className="text-base text-gray-500 mt-1">
-                {latestDateString}
-                {latestVitals.date && (
-                  <span className="ml-3 px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full font-medium">
-                    These vitals are {getDaysOld(latestVitals.date)}
-                  </span>
-                )}
+        {/* Header */}
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-lg font-semibold text-gray-900">Vitals & Biometrics</h1>
+            {latestVitals.date && (
+              <p className="text-sm text-gray-600">
+                Last recorded {getDaysOld(latestVitals.date)}
               </p>
-            </div>
-            <Link
-              href={`/dashboard/patients/${patientUuid}/vitals/new`}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-700 transition-colors duration-200 font-semibold text-sm flex items-center"
-            >
-              Record Vitals
-            </Link>
+            )}
           </div>
+          <Link
+            href={`/dashboard/patients/${patientUuid}/vitals/new`}
+            className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+          >
+            <Activity className="w-4 h-4" />
+            Record Vitals
+          </Link>
+        </div>
 
-          {/* --- MAIN CONTENT --- */}
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            <div className="lg:col-span-1 space-y-4">
-              <h2 className="text-lg font-semibold text-gray-800 border-b pb-2 mb-4">
-                Latest Readings
-              </h2>
-              <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                <VitalsSummaryCard latestVitals={latestVitals} />
-              </div>
+        {/* Latest Vitals Summary */}
+        {latestVitals.date && (
+          <div className="bg-gray-50 rounded border border-gray-200 p-3">
+            <div className="flex items-center gap-2 mb-2">
+              <TrendingUp className="w-4 h-4 text-gray-600" />
+              <h3 className="text-sm font-medium text-gray-900">Latest Vitals</h3>
+              <span className="text-xs text-gray-500">
+                {formatVitalDate(latestVitals.date)}
+              </span>
             </div>
-
-            <div className="lg:col-span-3 space-y-8">
-              <VitalsHistoryTable title="Vitals History" data={vitalsHistory} />
-              <BiometricsHistoryTable title="Biometrics History" data={vitalsHistory} />
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+              {latestVitals.temp && <div>Temp: <span className="font-medium">{latestVitals.temp}°C</span></div>}
+              {latestVitals.pulse && <div>Pulse: <span className="font-medium">{latestVitals.pulse}</span></div>}
+              {latestVitals.systolicBP && latestVitals.diastolicBP && (
+                <div>BP: <span className="font-medium">{latestVitals.systolicBP}/{latestVitals.diastolicBP}</span></div>
+              )}
+              {latestVitals.respRate && <div>Resp: <span className="font-medium">{latestVitals.respRate}</span></div>}
             </div>
           </div>
+        )}
+
+        {/* Biometrics Summary */}
+        {(latestVitals.weight || latestVitals.height) && (
+          <div className="bg-gray-50 rounded border border-gray-200 p-3">
+            <div className="flex items-center gap-2 mb-2">
+              <Scale className="w-4 h-4 text-gray-600" />
+              <h3 className="text-sm font-medium text-gray-900">Biometrics</h3>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
+              {latestVitals.weight && <div>Weight: <span className="font-medium">{latestVitals.weight}kg</span></div>}
+              {latestVitals.height && <div>Height: <span className="font-medium">{latestVitals.height}cm</span></div>}
+              {latestVitals.bmi && <div>BMI: <span className="font-medium">{latestVitals.bmi.toFixed(1)}</span></div>}
+            </div>
+          </div>
+        )}
+
+        {/* History Tables */}
+        <div className="space-y-4">
+          <VitalsHistory data={vitalsHistory} />
+          <BiometricsHistory data={vitalsHistory} />
         </div>
       </div>
-    </PatientDashboardProvider>
+    </div>
   );
 }
 
-// --- PRESENTATION COMPONENTS ---
-const VitalsSummaryCard: React.FC<{ latestVitals: VitalSign }> = ({ latestVitals }) => {
-  const VitalsItem = ({
-    label,
-    value,
-    unit,
-  }: {
-    label: string;
-    value: string | number | undefined;
-    unit: string;
-  }) => (
-    <div className="flex justify-between items-center pt-3 first:pt-0">
-      <span className="text-sm text-gray-600">{label}</span>
-      <span className="text-sm font-semibold text-gray-900">
-        {value ? `${value} ${unit}` : '--'}
-      </span>
+const VitalsHistory: React.FC<{ data: VitalSign[] }> = ({ data }) => (
+  <div className="border border-gray-200 rounded">
+    <div className="bg-gray-50 border-b border-gray-200 px-3 py-2">
+      <h3 className="text-sm font-medium text-gray-900">Vitals History ({data.length})</h3>
     </div>
-  );
-
-  return (
-    <div className="space-y-3 divide-y divide-gray-100">
-      <VitalsItem
-        label="BP"
-        value={
-          latestVitals.systolicBP && latestVitals.diastolicBP
-            ? `${latestVitals.systolicBP} / ${latestVitals.diastolicBP}`
-            : undefined
-        }
-        unit="mmHg"
-      />
-      <VitalsItem label="Heart rate" value={latestVitals.pulse} unit="beats/min" />
-      <VitalsItem label="R. rate" value={latestVitals.respRate} unit="breaths/min" />
-      <VitalsItem label="SpO2" value={latestVitals.spo2 || '--'} unit="%" />
-      <VitalsItem label="Temp" value={latestVitals.temp} unit="DEG C" />
-      <VitalsItem label="Weight" value={latestVitals.weight} unit="kg" />
-      <VitalsItem label="Height" value={latestVitals.height} unit="cm" />
-      <VitalsItem label="BMI" value={latestVitals.bmi?.toFixed(1)} unit="kg / m²" />
+    <div className="divide-y divide-gray-100">
+      {data.map((v, i) => (
+        <div key={i} className="px-3 py-2 text-sm">
+          <div className="flex justify-between items-center mb-1">
+            <span className="text-gray-900 font-medium">{formatVitalDate(v.date)}</span>
+            <span className="text-xs text-gray-500">{getDaysOld(v.date)}</span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-gray-600">
+            {v.temp && <div>Temp: {v.temp}°C</div>}
+            {v.pulse && <div>Pulse: {v.pulse}</div>}
+            {v.systolicBP && v.diastolicBP && <div>BP: {v.systolicBP}/{v.diastolicBP}</div>}
+            {v.respRate && <div>Resp: {v.respRate}</div>}
+          </div>
+        </div>
+      ))}
     </div>
-  );
-};
-
-const VitalsHistoryTable: React.FC<{ title: string; data: VitalSign[] }> = ({ title, data }) => (
-  <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
-    <h3 className="text-xl font-semibold text-gray-800 mb-4">{title}</h3>
-    <div className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
-          <tr>
-            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-              Date and time
-            </th>
-            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-              Temp (DEG C)
-            </th>
-            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-              BP (mmHg)
-            </th>
-            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-              Pulse (beats/min)
-            </th>
-            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-              R. Rate (breaths/min)
-            </th>
-            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-              SpO2 (%)
-            </th>
-          </tr>
-        </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
-          {data.map((v, i) => (
-            <tr key={i} className="hover:bg-gray-50">
-              <td className="px-4 py-3 text-sm text-gray-800">{formatVitalDate(v.date)}</td>
-              <td className="px-4 py-3 text-sm text-gray-500">{v.temp || '--'}</td>
-              <td className="px-4 py-3 text-sm text-gray-500">
-                {v.systolicBP && v.diastolicBP ? `${v.systolicBP} / ${v.diastolicBP}` : '--'}
-              </td>
-              <td className="px-4 py-3 text-sm text-gray-500">{v.pulse || '--'}</td>
-              <td className="px-4 py-3 text-sm text-gray-500">{v.respRate || '--'}</td>
-              <td className="px-4 py-3 text-sm text-gray-500">{v.spo2 || '--'}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-    <p className="text-xs text-gray-500 mt-4">{data.length} item(s) listed.</p>
   </div>
 );
 
-const BiometricsHistoryTable: React.FC<{ title: string; data: VitalSign[] }> = ({ title, data }) => (
-  <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
-    <h3 className="text-xl font-semibold text-gray-800 mb-4">{title}</h3>
-    <div className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
-          <tr>
-            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-              Date and time
-            </th>
-            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-              Weight (kg)
-            </th>
-            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-              Height (cm)
-            </th>
-            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-              BMI (kg / m²)
-            </th>
-            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-              MUAC (cm)
-            </th>
-          </tr>
-        </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
-          {data.map((v, i) => (
-            <tr key={i} className="hover:bg-gray-50">
-              <td className="px-4 py-3 text-sm text-gray-800">{formatVitalDate(v.date)}</td>
-              <td className="px-4 py-3 text-sm text-gray-500">{v.weight || '--'}</td>
-              <td className="px-4 py-3 text-sm text-gray-500">{v.height || '--'}</td>
-              <td className="px-4 py-3 text-sm text-gray-500">{v.bmi?.toFixed(1) || '--'}</td>
-              <td className="px-4 py-3 text-sm text-gray-500">--</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+const BiometricsHistory: React.FC<{ data: VitalSign[] }> = ({ data }) => (
+  <div className="border border-gray-200 rounded">
+    <div className="bg-gray-50 border-b border-gray-200 px-3 py-2">
+      <h3 className="text-sm font-medium text-gray-900">Biometrics History ({data.length})</h3>
     </div>
-    <p className="text-xs text-gray-500 mt-4">{data.length} item(s) listed.</p>
+    <div className="divide-y divide-gray-100">
+      {data.map((v, i) => (
+        <div key={i} className="px-3 py-2 text-sm">
+          <div className="flex justify-between items-center mb-1">
+            <span className="text-gray-900 font-medium">{formatVitalDate(v.date)}</span>
+            <span className="text-xs text-gray-500">{getDaysOld(v.date)}</span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs text-gray-600">
+            {v.weight && <div>Weight: {v.weight}kg</div>}
+            {v.height && <div>Height: {v.height}cm</div>}
+            {v.bmi && <div>BMI: {v.bmi.toFixed(1)}</div>}
+          </div>
+        </div>
+      ))}
+    </div>
   </div>
 );

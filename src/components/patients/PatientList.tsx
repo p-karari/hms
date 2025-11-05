@@ -4,7 +4,6 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Loader2, BedDouble, Calendar, Users } from 'lucide-react';
 import { searchPatients, ListPatient } from '../../lib/patients/searchPatients'; 
 import { getAppointmentsTodayCount } from '../../lib/appointments/manageAppointments'; 
-// NOTE: Assuming the path is correct for the updated dashboard action
 import { getDashboardVisitData, VisitDetail } from '../../lib/visits/getDashboardVisitData'; 
 
 interface DashboardData {
@@ -36,63 +35,50 @@ const ActiveVisitDashboard: React.FC<PatientListProps> = ({ searchTerm }) => {
 
   const currentQuery = searchTerm.trim();
 
-  // --- REFACTOR: Consolidated Fetch Logic with Debounced Search ---
+  // ✅ No dependency on dashboardData
   const fetchDashboardAndPatients = useCallback(async (query: string) => {
-    // Only show full page loader on initial load (when dashboardData is null)
-    if (!dashboardData) setLoading(true); 
+    setLoading(true);
     setError(null);
 
-    // Use a flag to track if we're searching to prevent the visit list from flickering
     const isSearching = query.length >= 2;
 
     try {
-      // Always fetch dashboard stats to keep the card counts fresh
       const [visitStats, appointmentsCount] = await Promise.all([
-        getDashboardVisitData(), // Fetches active visits list, active count, total today count
+        getDashboardVisitData(),
         getAppointmentsTodayCount(),
       ]);
 
-      const stats: DashboardData = {
+      setDashboardData({
         activeVisits: visitStats.activeVisits,
         totalVisitsToday: visitStats.totalVisitsToday,
         appointmentsToday: appointmentsCount,
         detailedVisits: visitStats.detailedVisits,
-      };
-      setDashboardData(stats);
+      });
 
-      // Only search patients if the query is long enough
       if (isSearching) {
-        // NOTE: The UI will display a lighter loading state implicitly while fetching search results.
         const fetchedPatients = await searchPatients(query, 50);
         setSearchResults(fetchedPatients);
       } else {
         setSearchResults([]);
       }
-
     } catch (err) {
-      console.error(err)
+      console.error(err);
       setError('Failed to load dashboard data or search results.');
-      setDashboardData(null); // Clear data on fatal error
     } finally {
       setLoading(false);
     }
-  }, [dashboardData]);
+  }, []); // ✅ Empty dependency array keeps it stable
 
-  // --- DEBOUNCE LOGIC (Handles Real-time Filtering) ---
+  // ✅ useEffect now runs only when the query changes
   useEffect(() => {
-    // The handler runs 300ms after the user stops typing (the debounce)
     const handler = setTimeout(() => {
-      // This is what implements the "real-time" search as the term changes
-      fetchDashboardAndPatients(currentQuery); 
-    }, 300); 
+      fetchDashboardAndPatients(currentQuery);
+    }, 300);
 
-    return () => {
-      // Clear the timeout if the component unmounts or the search term changes again
-      clearTimeout(handler);
-    };
-  }, [currentQuery, fetchDashboardAndPatients]); // Runs every time the user inputs a character
+    return () => clearTimeout(handler);
+  }, [currentQuery, fetchDashboardAndPatients]);
 
-  // --- DISPLAY LOGIC ---
+
   const displayList = useMemo(() => {
       const isSearchActive = currentQuery.length >= 2;
       
