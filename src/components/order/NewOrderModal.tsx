@@ -40,7 +40,7 @@ export default function NewOrderModal({ patientUuid, currentEncounterUuid, isOpe
         orderType: 'LAB' as ClientOrderType,
         conceptUuid: '',
         instructions: '',
-        urgency: 'ROUTINE' as 'ROUTINE' | 'STAT' | 'ASAP',
+        urgency: 'Routine' as 'Routine' | 'Stat' ,
         // Example: Specimen source could be dynamic, but fixed here for simplicity
         specimenSourceUuid: '', 
     });
@@ -84,7 +84,7 @@ export default function NewOrderModal({ patientUuid, currentEncounterUuid, isOpe
             orderType: 'LAB',
             conceptUuid: '',
             instructions: '',
-            urgency: 'ROUTINE',
+            urgency: 'Routine',
             specimenSourceUuid: '',
         });
         onClose();
@@ -102,7 +102,13 @@ export default function NewOrderModal({ patientUuid, currentEncounterUuid, isOpe
         setIsSubmitting(true);
 
         // Map client type to API type
-        const apiOrderType = formData.orderType.toLowerCase() + 'order' as NewOrderSubmissionData['orderType'];
+const orderTypeMap: Record<ClientOrderType, NewOrderSubmissionData['orderType']> = {
+    LAB: 'testorder',
+    RADIOLOGY: 'testorder',
+    PROCEDURE: 'testorder',
+};
+
+const apiOrderType = orderTypeMap[formData.orderType];
 
         const payload: NewOrderSubmissionData = {
             patientUuid: patientUuid,
@@ -132,7 +138,7 @@ export default function NewOrderModal({ patientUuid, currentEncounterUuid, isOpe
 
     // --- Component JSX ---
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 backdrop-blur-sm bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-6 relative">
                 
                 {/* Modal Header */}
