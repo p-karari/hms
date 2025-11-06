@@ -6,7 +6,7 @@ import { SessionContext } from '../../lib/context/session-context';
 import { CodedValue } from '@/lib/patients/getPatientObservations';
 import { getVisitTypes } from '@/lib/patients/getVisitTypes';
 import { Visit, createVisit, updateVisit } from '@/lib/patients/manageVisits';
-import { Plus, X, Edit, Stethoscope, Activity } from 'lucide-react';
+import { Plus, X, Activity } from 'lucide-react';
 
 interface PatientActionsProps {
   patientUuid: string;
@@ -172,17 +172,17 @@ const handleEndVisit = async () => {
           <Activity className="w-3 h-3" />
           Capture Vitals
         </Link>
-        <Link 
+        {/* <Link 
           href={`/dashboard/patients/${patientUuid}/consultation`}
           className="flex items-center gap-2 text-xs p-2 text-blue-600 hover:bg-blue-50 rounded"
         >
           <Stethoscope className="w-3 h-3" />
           Consultation Note
-        </Link>
+        </Link> */}
       </div>
 
       {/* Admin Actions */}
-      <div className="space-y-2">
+      {/* <div className="space-y-2">
         <div className="font-medium text-xs text-gray-600">Admin</div>
         <Link 
           href={`/dashboard/patients/${patientUuid}/edit`}
@@ -191,7 +191,7 @@ const handleEndVisit = async () => {
           <Edit className="w-3 h-3" />
           Edit Demographics
         </Link>
-      </div>
+      </div> */}
     </div>
   );
 };
