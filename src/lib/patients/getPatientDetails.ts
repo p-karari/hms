@@ -6,19 +6,41 @@ import { getAuthHeaders, redirectToLogin } from '../auth/auth';
 export interface Identifier {
   uuid: string;
   identifier: string;
-  identifierType: { uuid: string; display: string };
+  identifierType: { uuid: string; display: string; links: any[] }; // Added 'links' for completeness
   preferred: boolean;
+}
+
+export interface Name {
+  uuid: string;
+  display: string;
+  givenName: string;
+  middleName: string | null;
+  familyName: string;
+  preferred: boolean;
+  voided: boolean;
+  links: any[]; // Added 'links' for completeness
+  resourceVersion: string;
 }
 
 export interface Address {
   uuid: string;
-  address1: string;
-  address2: string;
-  cityVillage: string;
-  stateProvince: string;
-  country: string;
-  postalCode: string;
+  display: string;
   preferred: boolean;
+  address1: string | null;
+  address2: string | null;
+  cityVillage: string | null;
+  stateProvince: string | null;
+  country: string | null;
+  postalCode: string | null;
+  countyDistrict: string | null;
+  // Included other address fields as they are present in v=full
+  address3: string | null; 
+  address4: string | null; 
+  address5: string | null; 
+  address6: string | null; 
+  voided: boolean;
+  links: any[];
+  resourceVersion: string;
 }
 
 export interface PersonAttribute {
@@ -27,22 +49,50 @@ export interface PersonAttribute {
   attributeType: { uuid: string; display: string };
 }
 
-export interface PatientDetailsType {
+// Updated Person structure to match the nested JSON data
+export interface Person {
   uuid: string;
   display: string;
   gender: string;
-  age?: number; // Calculated on the server
+  age: number;
   birthdate: string;
   birthdateEstimated: boolean;
-  isDead: boolean;
-  identifiers: Identifier[];
+  dead: boolean; // Renamed from isDead
+  deathDate: string | null;
+  causeOfDeath: string | null;
+  preferredName: Name;
+  preferredAddress: Address | null;
+  names: Name[];
   addresses: Address[];
   attributes: PersonAttribute[];
-  hasAllergies?: boolean;
-  // Include name details which are part of the 'full' representation
-  person: {
-    names: { uuid: string; givenName: string; familyName: string; preferred: boolean }[];
-  }
+  voided: boolean;
+  auditInfo: any;
+  links: any[];
+  resourceVersion: string;
+}
+
+// Updated PatientDetailsType
+export interface PatientDetailsType {
+  uuid: string;
+  display: string;
+  identifiers: Identifier[];
+  // The demographic fields and addresses are now correctly nested under 'person'
+  person: Person;
+  voided: boolean;
+  auditInfo: any;
+  links: any[];
+  resourceVersion: string;
+
+  // NOTE: You can remove these root properties as they are now under 'person'
+  // and are redundant or potentially outdated at the root level of the patient resource.
+  // gender?: string;
+  // age?: number;
+  // birthdate?: string;
+  // birthdateEstimated?: boolean;
+  // isDead?: boolean;
+  // addresses?: Address[];
+  // attributes?: PersonAttribute[];
+  hasAllergies?: boolean; // This one remains as it's not in the 'person' object
 }
 
 /**
@@ -72,6 +122,8 @@ export async function getPatientDetails(patientUuid: string): Promise<PatientDet
     }
 
     const data = await res.json();
+    // console.log('Fetched patient details from OpenMRS:', JSON.stringify(data, null, 2));
+
     return data as PatientDetailsType;
 
   } catch (error) {
