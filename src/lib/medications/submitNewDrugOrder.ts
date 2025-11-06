@@ -4,11 +4,9 @@ import { getAuthHeaders, redirectToLogin } from '@/lib/auth/auth';
 import { getConceptUuid } from '../config/concept';
 import { SessionContextType } from '../context/session-context';
 import { getPatientActiveVisit } from '../visits/getActiveVisit';
-import { getEncounterTypeUuid } from '../encounters/encounterType';
-import { getEncounterRoleUuid } from '../encounters/encounterRole';
 import { getOrderTypeUuid } from '../config/orderType';
 import { getCareSettingUuid } from '../config/careSetting';
-import { getActiveEncounterUuid } from '../encounters/getActiveEncounterUuid'; // ✅ new import
+import { createEncounter } from '../encounters/createEncounter'; // ✅ dynamic encounter creator
 
 // --- Interface for Form Data ---
 export interface NewOrderFormData {
@@ -23,6 +21,7 @@ export interface NewOrderFormData {
     quantity: number;
     quantityUnitsConceptUuid: string;
     instructions: string;
+    numRefills?: number; // optional, will default to 0
 }
 
 // --- Helper for API Error Handling ---
@@ -38,58 +37,59 @@ async function handleApiError(response: Response) {
 }
 
 /**
- * Submits a new drug order linked to an active encounter (if available).
+ * Submits a new drug order.
+ * Automatically creates an encounter if none exists.
  */
-export async function submitNewDrugOrder(formData: NewOrderFormData, sessionData: SessionContextType): Promise<string> {
+export async function submitNewDrugOrder(
+    formData: NewOrderFormData,
+    sessionData: SessionContextType
+): Promise<string> {
     if (!sessionData.isAuthenticated || !sessionData.user.uuid) {
         throw new Error("User must be authenticated to place an order.");
     }
 
-    // 1️⃣ Fetch patient visit + encounter context
-    const [activeVisit, activeEncounterUuid] = await Promise.all([
-        getPatientActiveVisit(formData.patientUuid),
-        getActiveEncounterUuid(formData.patientUuid)
-    ]);
-
+    // 1️⃣ Ensure patient has an active visit
+    const activeVisit = await getPatientActiveVisit(formData.patientUuid);
     if (!activeVisit) {
         throw new Error("Cannot place order: Patient does not have an active visit.");
     }
 
-    if (!activeEncounterUuid) {
-        throw new Error("Cannot place order: No active encounter found for this patient.");
+    // 2️⃣ Ensure an encounter exists (create dynamically if missing)
+    let encounterUuid: string;
+    try {
+        encounterUuid = await createEncounter({
+            patientUuid: formData.patientUuid,
+            encounterTypeName: 'Order',
+            sessionData
+        });
+    } catch (err) {
+        console.error('Encounter creation failed:', err);
+        throw new Error('Failed to create encounter for drug order.');
     }
 
-    // 2️⃣ Fetch dynamic configuration UUIDs
-    const [
-        // encounterTypeUuid,
-        // encounterRoleUuid,
-        orderTypeUuid,
-        careSettingUuid,
-        durationUnitsUuid
-    ] = await Promise.all([
-        getEncounterTypeUuid('Vitals'),
-        getEncounterRoleUuid('Clinician'),
+    // 3️⃣ Fetch dynamic configuration UUIDs
+    const [orderTypeUuid, careSettingUuid, durationUnitsUuid] = await Promise.all([
         getOrderTypeUuid('Drug Order'),
         getCareSettingUuid('Outpatient'),
         getConceptUuid('Days')
     ]);
 
-    // 3️⃣ Construct payload using existing encounter UUID
+    // 4️⃣ Construct payload
     const nowISO = new Date().toISOString();
-    const ordererUuid = sessionData.user.uuid;
-    // const locationUuid = sessionData.sessionLocation.uuid;
-
-    const payload = {
+    const ordererUuid = process.env.NEXT_PUBLIC_DEFAULT_PROVIDER_UUID;
+    if (!ordererUuid) {
+    throw new Error("Default provider UUID is not set in environment variables.");
+    }
+    const payload: Record<string, any> = {
         type: "drugorder",
         patient: formData.patientUuid,
         concept: formData.conceptUuid,
         drug: formData.drugUuid,
-        orderer: ordererUuid,
+        orderer: ordererUuid, // ✅ hardcoded provider for testing
         careSetting: careSettingUuid,
         orderType: orderTypeUuid,
         action: "NEW",
-        encounter: activeEncounterUuid, // ✅ Use existing encounter UUID instead of full object
-
+        encounter: encounterUuid, // ✅ guaranteed encounter
         dosingType: "org.openmrs.SimpleDosingInstructions",
         dose: formData.dose,
         doseUnits: formData.doseUnitsConceptUuid,
@@ -100,10 +100,11 @@ export async function submitNewDrugOrder(formData: NewOrderFormData, sessionData
         quantity: formData.quantity,
         quantityUnits: formData.quantityUnitsConceptUuid,
         instructions: formData.instructions,
-        dateActivated: nowISO
+        dateActivated: nowISO,
+        numRefills: formData.numRefills ?? 0 // ✅ required for outpatient orders
     };
 
-    // 4️⃣ Submit to OpenMRS
+    // 5️⃣ Submit to OpenMRS
     let headers: Record<string, string>;
     try {
         headers = await getAuthHeaders();
