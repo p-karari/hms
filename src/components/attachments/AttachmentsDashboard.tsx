@@ -7,7 +7,7 @@ import { Plus, FolderOpen, Loader2, AlertTriangle, Upload, FileText, X } from 'l
 import AttachmentList from '@/components/attachments/AttachmentList';
 import { getAttachmentUploadContext } from '@/lib/attachments/getAttachmentUploadContext';
 import { uploadPatientAttachment } from '@/lib/attachments/uploadPatientAttachment';
-import { getProviderUuid } from '@/lib/config/provider';
+// import { getProviderUuid } from '@/lib/config/provider';
 import { getPatientLocations } from '@/lib/location/getPatientLocations';
 
 
@@ -40,14 +40,13 @@ export default function AttachmentsDashboard({ patientUuid }: AttachmentsDashboa
     });
 
     const MAX_FILE_SIZE_MB = 5; 
-
+const providerId = process.env.NEXT_PUBLIC_PROVIDER_UUID!;
     // --- Initial Data Fetching ---
     const fetchInitialData = useCallback(async () => {
         setIsLoadingContext(true);
         try {
-            const [context, providerId, locations] = await Promise.all([
+            const [context, locations] = await Promise.all([
                 getAttachmentUploadContext(),
-                getProviderUuid(), 
                 getPatientLocations(patientUuid), 
             ]);
             
