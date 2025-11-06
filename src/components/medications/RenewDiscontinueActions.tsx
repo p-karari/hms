@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-// Your core DrugOrder interface
 import { Trash2, RotateCcw } from 'lucide-react'; 
 import { DrugOrder } from '@/lib/medications/getPatientMedicationOrders';
 import { SessionContextType } from '@/lib/context/session-context';
@@ -14,15 +13,10 @@ interface RenewDiscontinueActionsProps {
     onActionSuccess: () => void;
 }
 
-/**
- * Renders buttons to Renew or Discontinue a specific drug order based on its status.
- */
 export default function RenewDiscontinueActions({ order, sessionData, onActionSuccess }: RenewDiscontinueActionsProps) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     
-    // Logic to determine action availability
     const isActive = !order.dateStopped && order.action !== 'DISCONTINUE';
-    // Orders that have a dateStopped (are finished) but weren't explicitly discontinued
     const isRenewable = !!order.dateStopped && order.action !== 'DISCONTINUE'; 
 
     const handleDiscontinue = async () => {
@@ -49,7 +43,6 @@ export default function RenewDiscontinueActions({ order, sessionData, onActionSu
     const handleRenew = async () => {
         if (!confirm(`Confirm renewal of ${order.display} with default settings (30 Days)?`)) return;
         
-        // --- VALIDATION AND ERROR CHECKING FOR MISSING CONCEPTS ---
         if (!order.drug || !order.concept || !order.patient || !order.doseUnits || !order.route || !order.frequency || !order.quantityUnits) {
              alert("Error: Missing critical drug, dose, route, or frequency information required for renewal. Cannot proceed.");
              console.error("Missing order data for renewal:", order);
@@ -58,20 +51,19 @@ export default function RenewDiscontinueActions({ order, sessionData, onActionSu
         
         setIsSubmitting(true);
 
-        // 🎯 CORRECTED MAPPING: Accessing nested UUIDs correctly
         const renewData: RenewOrderData = {
-            patientUuid: order.patient.uuid, // ✅ Correct: Patient is a nested object
+            patientUuid: order.patient.uuid,
             previousOrderUuid: order.uuid,
-            duration: 30, // Default duration for renewal (should be user input)
-            durationUnitsConceptUuid: order.durationUnits.uuid, // ✅ Correct: Assuming nested concept
+            duration: 30,
+            durationUnitsConceptUuid: order.durationUnits.uuid,
             conceptUuid: order.concept.uuid,
             drugUuid: order.drug.uuid,
             dose: order.dose, 
-            doseUnitsConceptUuid: order.doseUnits.uuid, // ✅ Correct: Assuming nested concept
-            routeConceptUuid: order.route.uuid, // ✅ Correct: Assuming nested concept
-            frequencyConceptUuid: order.frequency.uuid, // ✅ Correct: Assuming nested concept
-            quantity: 30, // Default quantity for renewal (should be user input)
-            quantityUnitsConceptUuid: order.quantityUnits.uuid, // ✅ Correct: Assuming nested concept
+            doseUnitsConceptUuid: order.doseUnits.uuid,
+            routeConceptUuid: order.route.uuid,
+            frequencyConceptUuid: order.frequency.uuid,
+            quantity: 30,
+            quantityUnitsConceptUuid: order.quantityUnits.uuid,
         };
 
         try {
@@ -87,28 +79,26 @@ export default function RenewDiscontinueActions({ order, sessionData, onActionSu
     };
 
     return (
-        <div className="flex space-x-2">
-            {/* 1. Discontinue Button (Only visible if the order is currently active) */}
+        <div className="flex space-x-1">
             {isActive && (
                 <button
                     onClick={handleDiscontinue}
                     disabled={isSubmitting}
-                    className="p-1.5 text-red-600 hover:bg-red-100 rounded disabled:opacity-50 disabled:cursor-not-allowed transition"
+                    className="p-1 text-red-600 hover:bg-red-50 rounded disabled:opacity-50 disabled:cursor-not-allowed"
                     title="Discontinue Active Order"
                 >
-                    <Trash2 className="w-5 h-5" />
+                    <Trash2 className="w-4 h-4" />
                 </button>
             )}
 
-            {/* 2. Renew Button (Only visible if the order is stopped/expired) */}
             {isRenewable && (
                 <button
                     onClick={handleRenew}
                     disabled={isSubmitting}
-                    className="p-1.5 text-blue-600 hover:bg-blue-100 rounded disabled:opacity-50 disabled:cursor-not-allowed transition"
+                    className="p-1 text-blue-600 hover:bg-blue-50 rounded disabled:opacity-50 disabled:cursor-not-allowed"
                     title="Renew Prescription"
                 >
-                    <RotateCcw className="w-5 h-5" />
+                    <RotateCcw className="w-4 h-4" />
                 </button>
             )}
         </div>
