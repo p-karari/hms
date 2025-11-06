@@ -3,13 +3,13 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import Link from 'next/link';
 import { getConceptUuid } from '@/lib/config/concept';
 import { getPatientObservations, Observation } from '@/lib/patients/getPatientObservations';
 import { getPatientActiveVisit } from '@/lib/visits/getActiveVisit';
 import { Visit } from '@/lib/patients/manageVisits';
 import PatientDetails from '@/components/patients/PatientDetails';
-import { Activity, Scale, TrendingUp } from 'lucide-react';
+import { Activity, Scale, TrendingUp, X } from 'lucide-react';
+import VitalsForm from '@/components/vitals/VitalsForm'; // ✅ ensure this path matches your actual component
 
 export interface VitalSign {
   date: string;
@@ -23,6 +23,16 @@ export interface VitalSign {
   weight?: number;
   height?: number;
   bmi?: number;
+}
+
+interface ConceptUuids {
+  WEIGHT: string;
+  HEIGHT: string;
+  TEMP: string;
+  SYSTOLIC_BP: string;
+  DIASTOLIC_BP: string;
+  PULSE: string;
+  RESP_RATE: string;
 }
 
 const getDaysOld = (isoString: string): string => {
@@ -84,6 +94,8 @@ export default function VitalsPage({ params }: { params: { uuid: string } }) {
   const patientUuid = params.uuid;
   const [activeVisit, setActiveVisit] = useState<Visit | null>(null);
   const [vitalsHistory, setVitalsHistory] = useState<VitalSign[]>([]);
+  const [showForm, setShowForm] = useState(false);
+  const [conceptMap, setConceptMap] = useState<Record<string, string> | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -104,7 +116,7 @@ export default function VitalsPage({ params }: { params: { uuid: string } }) {
         getConceptUuid('Respiratory rate'),
       ]);
 
-      const conceptMap = {
+      const map = {
         WEIGHT: conceptUuids[0],
         HEIGHT: conceptUuids[1],
         TEMP: conceptUuids[2],
@@ -113,9 +125,10 @@ export default function VitalsPage({ params }: { params: { uuid: string } }) {
         PULSE: conceptUuids[5],
         RESP_RATE: conceptUuids[6],
       };
+      setConceptMap(map);
 
       const rawObservations = await getPatientObservations(patientUuid);
-      const vitals = await processVitals(rawObservations, conceptMap);
+      const vitals = await processVitals(rawObservations, map);
       setVitalsHistory(vitals);
     } catch (err) {
       console.error('Vitals loading error:', err);
@@ -133,9 +146,9 @@ export default function VitalsPage({ params }: { params: { uuid: string } }) {
   const latestVitals = vitalsHistory[0] || {};
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white relative">
       <div className="p-4 space-y-4">
-        {/* Patient Details - Preserved exactly as requested */}
+        {/* Patient Details */}
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <PatientDetails
             patientUuid={patientUuid}
@@ -149,8 +162,9 @@ export default function VitalsPage({ params }: { params: { uuid: string } }) {
           <div className="flex items-center gap-2 p-2 bg-green-50 border border-green-200 rounded text-sm">
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
             <span className="text-green-700">
-              Active Visit • {new Date(activeVisit.startDatetime).toLocaleTimeString([], { 
-                hour: '2-digit', minute: '2-digit' 
+              Active Visit • {new Date(activeVisit.startDatetime).toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit',
               })}
             </span>
           </div>
@@ -161,42 +175,55 @@ export default function VitalsPage({ params }: { params: { uuid: string } }) {
           <div>
             <h1 className="text-lg font-semibold text-gray-900">Vitals & Biometrics</h1>
             {latestVitals.date && (
-              <p className="text-sm text-gray-600">
-                Last recorded {getDaysOld(latestVitals.date)}
-              </p>
+              <p className="text-sm text-gray-600">Last recorded {getDaysOld(latestVitals.date)}</p>
             )}
           </div>
-          <Link
-            href={`/dashboard/patients/${patientUuid}/vitals/new`}
+          <button
+            onClick={() => setShowForm(true)}
             className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
           >
             <Activity className="w-4 h-4" />
             Record Vitals
-          </Link>
+          </button>
         </div>
 
-        {/* Latest Vitals Summary */}
+        {/* Latest Vitals */}
         {latestVitals.date && (
           <div className="bg-gray-50 rounded border border-gray-200 p-3">
             <div className="flex items-center gap-2 mb-2">
               <TrendingUp className="w-4 h-4 text-gray-600" />
               <h3 className="text-sm font-medium text-gray-900">Latest Vitals</h3>
-              <span className="text-xs text-gray-500">
-                {formatVitalDate(latestVitals.date)}
-              </span>
+              <span className="text-xs text-gray-500">{formatVitalDate(latestVitals.date)}</span>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
-              {latestVitals.temp && <div>Temp: <span className="font-medium">{latestVitals.temp}°C</span></div>}
-              {latestVitals.pulse && <div>Pulse: <span className="font-medium">{latestVitals.pulse}</span></div>}
-              {latestVitals.systolicBP && latestVitals.diastolicBP && (
-                <div>BP: <span className="font-medium">{latestVitals.systolicBP}/{latestVitals.diastolicBP}</span></div>
+              {latestVitals.temp && (
+                <div>
+                  Temp: <span className="font-medium">{latestVitals.temp}°C</span>
+                </div>
               )}
-              {latestVitals.respRate && <div>Resp: <span className="font-medium">{latestVitals.respRate}</span></div>}
+              {latestVitals.pulse && (
+                <div>
+                  Pulse: <span className="font-medium">{latestVitals.pulse}</span>
+                </div>
+              )}
+              {latestVitals.systolicBP && latestVitals.diastolicBP && (
+                <div>
+                  BP:{' '}
+                  <span className="font-medium">
+                    {latestVitals.systolicBP}/{latestVitals.diastolicBP}
+                  </span>
+                </div>
+              )}
+              {latestVitals.respRate && (
+                <div>
+                  Resp: <span className="font-medium">{latestVitals.respRate}</span>
+                </div>
+              )}
             </div>
           </div>
         )}
 
-        {/* Biometrics Summary */}
+        {/* Biometrics */}
         {(latestVitals.weight || latestVitals.height) && (
           <div className="bg-gray-50 rounded border border-gray-200 p-3">
             <div className="flex items-center gap-2 mb-2">
@@ -204,23 +231,59 @@ export default function VitalsPage({ params }: { params: { uuid: string } }) {
               <h3 className="text-sm font-medium text-gray-900">Biometrics</h3>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
-              {latestVitals.weight && <div>Weight: <span className="font-medium">{latestVitals.weight}kg</span></div>}
-              {latestVitals.height && <div>Height: <span className="font-medium">{latestVitals.height}cm</span></div>}
-              {latestVitals.bmi && <div>BMI: <span className="font-medium">{latestVitals.bmi.toFixed(1)}</span></div>}
+              {latestVitals.weight && (
+                <div>
+                  Weight: <span className="font-medium">{latestVitals.weight}kg</span>
+                </div>
+              )}
+              {latestVitals.height && (
+                <div>
+                  Height: <span className="font-medium">{latestVitals.height}cm</span>
+                </div>
+              )}
+              {latestVitals.bmi && (
+                <div>
+                  BMI: <span className="font-medium">{latestVitals.bmi.toFixed(1)}</span>
+                </div>
+              )}
             </div>
           </div>
         )}
 
-        {/* History Tables */}
+        {/* History */}
         <div className="space-y-4">
           <VitalsHistory data={vitalsHistory} />
           <BiometricsHistory data={vitalsHistory} />
         </div>
       </div>
+
+      {/* ✅ Modal for Vitals Form */}
+{/* ✅ Modal for Vitals Form */}
+{showForm && conceptMap && (
+  <div className="fixed inset-0 backdrop-blur-sm bg-opacity-40 flex items-center justify-center z-50">
+    <div className="relative bg-white rounded-xl shadow-lg p-6 w-full max-w-2xl">
+      <button
+        onClick={() => setShowForm(false)}
+        className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"
+      >
+        <X className="w-5 h-5" />
+      </button>
+
+      <VitalsForm
+        patientUuid={patientUuid}
+        conceptUuids={conceptMap as unknown as ConceptUuids}
+        // ✅ NEW: callback to close modal after successful submission
+        onSuccess={() => setShowForm(false)}
+      />
+    </div>
+  </div>
+)}
+
     </div>
   );
 }
 
+/* --- History Components --- */
 const VitalsHistory: React.FC<{ data: VitalSign[] }> = ({ data }) => (
   <div className="border border-gray-200 rounded">
     <div className="bg-gray-50 border-b border-gray-200 px-3 py-2">
