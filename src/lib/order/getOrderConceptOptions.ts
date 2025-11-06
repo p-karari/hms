@@ -43,9 +43,9 @@ export async function getOrderConceptOptions(): Promise<OrderableConceptLists> {
     // --- Configuration: These must match the display names or UUIDs of your Concept Sets ---
     // NOTE: In production, verify these names match the Concept Sets used to define orderables.
     const conceptSetsToFetch = {
-        labTests: "Lab Tests Set",              // Concept Set containing all orderable lab tests
-        radiologyProcedures: "Radiology Procedures Set", // Concept Set containing all orderable radiology exams
-        generalProcedures: "General Procedures Set",     // Concept Set containing all minor procedures/consults
+        labTests: "Laboratory orders",              // Concept Set containing all orderable lab tests
+        radiologyProcedures: "Radiology department", // Concept Set containing all orderable radiology exams
+        generalProcedures: "General",     // Concept Set containing all minor procedures/consults
     };
 
     const apiBaseUrl = process.env.OPENMRS_API_URL;
