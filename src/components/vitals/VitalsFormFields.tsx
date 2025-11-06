@@ -3,8 +3,7 @@
 import React, { useState, useTransition, useMemo } from 'react';
 import { Loader2, Save } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { submitVitals } from '@/lib/encounters/submitVitals';
-import { ObsPayload } from '@/lib/encounters/encounter';
+import { ObsPayload, submitEncounter } from '@/lib/encounters/encounter';
 
 interface ConceptUuids {
   WEIGHT: string;
@@ -127,7 +126,7 @@ const VitalsFormFields: React.FC<VitalsFormProps> = ({
 
     startTransition(async () => {
       try {
-        const result = await submitVitals(payload);
+        // const result = await submitEncounter(payload);
         setStatus('success');
         setMessage('Vitals submitted successfully!');
         setTimeout(() => router.push(`/dashboard/patients/${patientUuid}`), 1500);
