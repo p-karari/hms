@@ -1,221 +1,152 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { getConceptUuid } from "@/lib/config/concept";
-import { getProviderUuid } from "@/lib/config/provider";
-import { getEncounterRoleUuid } from "@/lib/encounters/encounterRole";
-import { getEncounterTypeUuid } from "@/lib/encounters/encounterType";
+import React, { useContext, useState, FormEvent } from 'react';
+import { SessionContext } from '@/lib/context/session-context';
+import { getEncounterTypeUuid } from '@/lib/encounters/encounterType';
+import { getEncounterRoleUuid } from '@/lib/encounters/encounterRole';
+import { getProviderUuid } from '@/lib/config/provider';
+import { submitEncounter } from '@/lib/encounters/encounter';
+import { getPatientActiveVisit } from '@/lib/visits/getActiveVisit';
+
+interface ConceptUuids {
+  WEIGHT: string;
+  HEIGHT: string;
+  TEMP: string;
+  SYSTOLIC_BP: string;
+  DIASTOLIC_BP: string;
+  PULSE: string;
+  RESP_RATE: string;
+}
 
 interface VitalsFormProps {
   patientUuid: string;
+  conceptUuids: ConceptUuids;
+  onSuccess?: () => void;
 }
 
-interface VitalsData {
-  weight: string;
-  height: string;
-  temperature: string;
-  systolic: string;
-  diastolic: string;
-  pulse: string;
-  respRate: string;
-}
+export default function VitalsForm({ patientUuid, conceptUuids, onSuccess }: VitalsFormProps) {
+  const { sessionLocation } = useContext(SessionContext);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
 
-export default function VitalsForm({ patientUuid }: VitalsFormProps) {
-  const [loading, setLoading] = useState(true);
-  const [concepts, setConcepts] = useState<Record<string, string>>({});
-  const [form, setForm] = useState<VitalsData>({
-    weight: "",
-    height: "",
-    temperature: "",
-    systolic: "",
-    diastolic: "",
-    pulse: "",
-    respRate: "",
+  const [formValues, setFormValues] = useState({
+    weight: '',
+    height: '',
+    temperature: '',
+    systolic: '',
+    diastolic: '',
+    pulse: '',
+    respRate: ''
   });
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-
-  // Load configuration once
-  useEffect(() => {
-    const fetchConfig = async () => {
-      try {
-        const [
-          providerUuid,
-          encounterTypeUuid,
-          encounterRoleUuid,
-          weight,
-          height,
-          temp,
-          sys,
-          dia,
-          pulse,
-          resp,
-        ] = await Promise.all([
-          getProviderUuid("admin"),
-          getEncounterTypeUuid("Vitals"),
-          getEncounterRoleUuid("Clinician"),
-          getConceptUuid("Weight (kg)"),
-          getConceptUuid("Height (cm)"),
-          getConceptUuid("Temparature (c)"),
-          getConceptUuid("Systolic blood pressure"),
-          getConceptUuid("Diastolic blood pressure"),
-          getConceptUuid("Pulse"),
-          getConceptUuid("Respiratory rate"),
-        ]);
-
-        setConcepts({
-          providerUuid,
-          encounterTypeUuid,
-          encounterRoleUuid,
-          weight,
-          height,
-          temp,
-          sys,
-          dia,
-          pulse,
-          resp,
-        });
-      } catch (err) {
-        console.error(err);
-        setError("Failed to load form configuration.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchConfig();
-  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+    setFormValues(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    setError(null);
-    setSuccess(null);
+    setLoading(true);
+    setMessage(null);
 
     try {
-      // 🩺 Build encounter payload
-      const obs = [
-        { concept: concepts.weight, value: form.weight },
-        { concept: concepts.height, value: form.height },
-        { concept: concepts.temp, value: form.temperature },
-        { concept: concepts.sys, value: form.systolic },
-        { concept: concepts.dia, value: form.diastolic },
-        { concept: concepts.pulse, value: form.pulse },
-        { concept: concepts.resp, value: form.respRate },
-      ].filter((o) => o.value !== ""); // Only send filled fields
+      if (!sessionLocation?.uuid) throw new Error('No session location found.');
+      if (!patientUuid) throw new Error('Missing patient UUID.');
 
-      const payload = {
-        encounterDatetime: new Date().toISOString(),
-        encounterType: concepts.encounterTypeUuid,
+      const [encounterTypeUuid, encounterRoleUuid, activeVisit] = await Promise.all([
+        getEncounterTypeUuid('Vitals'),
+        // getProviderUuid(),
+        getEncounterRoleUuid('Clinician'),
+        getPatientActiveVisit(patientUuid)
+      ]);
+
+      if (!activeVisit) throw new Error('No active visit found for this patient.');
+
+      const obs = [
+        { concept: conceptUuids.WEIGHT, value: Number(formValues.weight) },
+        { concept: conceptUuids.HEIGHT, value: Number(formValues.height) },
+        { concept: conceptUuids.TEMP, value: Number(formValues.temperature) },
+        { concept: conceptUuids.SYSTOLIC_BP, value: Number(formValues.systolic) },
+        { concept: conceptUuids.DIASTOLIC_BP, value: Number(formValues.diastolic) },
+        { concept: conceptUuids.PULSE, value: Number(formValues.pulse) },
+        { concept: conceptUuids.RESP_RATE, value: Number(formValues.respRate) }
+      ].filter(o => !isNaN(o.value));
+
+      const encounterPayload = {
         patient: patientUuid,
-        provider: concepts.providerUuid,
+        encounterDatetime: new Date().toISOString(),
+        encounterType: encounterTypeUuid,
+        location: sessionLocation.uuid,
+        visit: activeVisit.uuid,
         encounterProviders: [
           {
-            provider: concepts.providerUuid,
-            encounterRole: concepts.encounterRoleUuid,
-          },
+            provider: process.env.NEXT_PUBLIC_DEFAULT_PROVIDER_UUID!,
+            encounterRole: encounterRoleUuid
+          }
         ],
-        obs,
+        obs
       };
 
-      const res = await fetch("/openmrs/ws/rest/v1/encounter", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization:
-            "Basic " +
-            btoa(
-              `${process.env.NEXT_PUBLIC_OMRS_USER}:${process.env.NEXT_PUBLIC_OMRS_PASS}`
-            ),
-        },
-        body: JSON.stringify(payload),
-      });
+      const response = await submitEncounter(encounterPayload);
+      setMessage(`Vitals submitted successfully. Encounter UUID: ${response.uuid}`);
 
-      if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error(errorText || "Encounter creation failed");
-      }
-
-      setSuccess("Vitals recorded successfully!");
-      setForm({
-        weight: "",
-        height: "",
-        temperature: "",
-        systolic: "",
-        diastolic: "",
-        pulse: "",
-        respRate: "",
-      });
-    } catch (err) {
-      console.error("Submit error:", err);
-      setError("Failed to submit vitals. Check connection or credentials.");
+      if (onSuccess) onSuccess();
+    } catch (err: any) {
+      console.error('Vitals submission failed:', err);
+      setMessage(`Error: ${err.message || 'Failed to submit vitals'}`);
+    } finally {
+      setLoading(false);
     }
   };
-
-  if (loading)
-    return (
-      <div className="text-sm text-gray-500 border border-gray-200 p-4 rounded-md">
-        Loading configuration...
-      </div>
-    );
-
-  if (error && !success)
-    return (
-      <div className="border border-red-200 bg-red-50 text-red-600 text-sm p-4 rounded-md">
-        {error}
-      </div>
-    );
 
   return (
     <form
       onSubmit={handleSubmit}
-      className="space-y-4 border border-gray-200 rounded-md p-4 bg-white"
+      className="w-full max-w-2xl mx-auto border border-gray-200 rounded-xl p-4 shadow-sm bg-white"
     >
-      {success && (
-        <div className="border border-green-200 bg-green-50 text-green-700 text-sm p-3 rounded-md">
-          {success}
-        </div>
-      )}
+      <h2 className="text-lg font-semibold mb-3 text-gray-800">Enter Vital Signs</h2>
 
-      {[
-        ["weight", "Weight (kg)"],
-        ["height", "Height (cm)"],
-        ["temperature", "Temperature (°C)"],
-        ["systolic", "Systolic BP"],
-        ["diastolic", "Diastolic BP"],
-        ["pulse", "Pulse"],
-        ["respRate", "Respiratory Rate"],
-      ].map(([key, label]) => (
-        <div key={key} className="flex items-center justify-between">
-          <label
-            htmlFor={key}
-            className="text-sm font-medium text-gray-700 w-1/3"
-          >
-            {label}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+        {[
+          { name: 'weight', label: 'Weight (kg)' },
+          { name: 'height', label: 'Height (cm)' },
+          { name: 'temperature', label: 'Temperature (°C)' },
+          { name: 'systolic', label: 'Systolic BP' },
+          { name: 'diastolic', label: 'Diastolic BP' },
+          { name: 'pulse', label: 'Pulse (bpm)' },
+          { name: 'respRate', label: 'Respiratory Rate' }
+        ].map(({ name, label }) => (
+          <label key={name} className="flex flex-col">
+            <span className="text-gray-600">{label}</span>
+            <input
+              name={name}
+              type="number"
+              value={(formValues as any)[name]}
+              onChange={handleChange}
+              className="border rounded-md p-2 focus:outline-none focus:ring"
+              required
+            />
           </label>
-          <input
-            id={key}
-            name={key}
-            value={(form as any)[key]}
-            onChange={handleChange}
-            type="number"
-            inputMode="decimal"
-            className="border border-gray-300 rounded-md px-2 py-1 w-1/2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
-        </div>
-      ))}
+        ))}
+      </div>
 
-      <div className="flex justify-end pt-4">
+      <div className="mt-5 flex justify-end">
         <button
           type="submit"
           disabled={loading}
-          className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md px-4 py-2 disabled:opacity-60"
+          className="px-5 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-60"
         >
-          {loading ? "Saving..." : "Save Vitals"}
+          {loading ? 'Submitting...' : 'Save Vitals'}
         </button>
       </div>
+
+      {message && (
+        <div className={`mt-4 text-sm ${message.startsWith('Error') ? 'text-red-600' : 'text-green-600'}`}>
+          {message}
+        </div>
+      )}
     </form>
   );
 }
+
+
