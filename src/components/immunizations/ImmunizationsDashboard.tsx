@@ -13,7 +13,7 @@ import {
     submitPatientImmunization, 
     NewImmunizationSubmissionData 
 } from '@/lib/immunizations/submitPatientImmunization';
-import { getProviderUuid } from '@/lib/config/provider';
+// import { getProviderUuid } from '@/lib/config/provider';
 import { getPatientLocations } from '@/lib/location/getPatientLocations';
 
 
@@ -47,18 +47,19 @@ export default function ImmunizationsDashboard({ patientUuid }: ImmunizationsDas
     });
 
     // --- Initial Data Fetching ---
+    // const providerId = process.env.NEXT_PUBLIC_PROVIDER_UUID!;
+
     const fetchInitialData = useCallback(async () => {
         setIsLoadingConcepts(true);
         try {
             // Fetch necessary reference data concurrently
-            const [concepts, providerId, locations] = await Promise.all([
+            const [concepts, locations] = await Promise.all([
                 getVaccineConceptOptions(),
-                getProviderUuid(), // Current user's provider UUID
                 getPatientLocations(patientUuid), // Available locations for administration
             ]);
             
             setVaccineConcepts(concepts);
-            setProviderUuid(providerId);
+            setProviderUuid(process.env.NEXT_PUBLIC_PROVIDER_UUID || null);
             setLocationOptions(locations.map(loc => ({ uuid: loc.uuid, display: loc.display })));
             
             // Set default location if available
