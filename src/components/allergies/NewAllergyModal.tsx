@@ -148,7 +148,7 @@ export default function NewAllergyModal({ patientUuid, isOpen, onClose, onAllerg
 
     // --- Component JSX ---
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 backdrop-blur-sm bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl p-6 relative">
                 
                 {/* Modal Header */}
