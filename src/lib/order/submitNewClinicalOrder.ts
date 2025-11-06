@@ -5,20 +5,16 @@ import { getAuthHeaders, redirectToLogin } from '@/lib/auth/auth';
 // --- Interface for the payload sent to the API ---
 export interface NewOrderSubmissionData {
     patientUuid: string;
-    conceptUuid: string; // The specific test, procedure, or consult being ordered
-    orderType: 'testorder' | 'radiologyorder' | 'procedureorder' | 'generalorder';
-    
-    // Core Order Fields
-    dateActivated?: string; // Optional: Defaults to "now" if not supplied
-    instructions?: string;  // Instructions for the fulfiller/lab
-    encounterUuid: string;  // UUID of the current encounter (REQUIRED by OpenMRS for most orders)
-    
-    // Optional details specific to Lab/Imaging
-    specimenSourceUuid?: string; // e.g., for lab tests
-    urgency?: 'ROUTINE' | 'STAT' | 'ASAP';
+    conceptUuid: string;
+    orderType: 'testorder' | 'drugorder'; // Only supported types now
+    dateActivated?: string;
+    instructions?: string;
+    encounterUuid: string;
+    specimenSourceUuid?: string; // Only used for lab/test orders
+    urgency?: 'Routine' | 'Stat';
 }
 
-// --- Helper for API Error Checking (Matching your structure) ---
+// --- Helper for API Error Checking ---
 async function handleApiError(response: Response, source: string) {
     if (response.status === 401 || response.status === 403) {
         redirectToLogin();
@@ -31,17 +27,20 @@ async function handleApiError(response: Response, source: string) {
 }
 
 /**
- * Submits a new non-medication clinical order (Lab, Radiology, Procedure) 
- * via a POST request to the OpenMRS /order endpoint.
- *
- * @param submissionData The structured data for the new order.
- * @returns A promise that resolves when the order is successfully created.
+ * Submits a new clinical order (drug or lab/test) to OpenMRS safely.
+ * Prevents unsupported order types from being sent to the API.
  */
 export async function submitNewClinicalOrder(submissionData: NewOrderSubmissionData): Promise<void> {
     const { patientUuid, conceptUuid, orderType, encounterUuid, instructions, specimenSourceUuid, urgency } = submissionData;
 
     if (!patientUuid || !conceptUuid || !orderType || !encounterUuid) {
         throw new Error("Missing required fields (patientUuid, conceptUuid, orderType, encounterUuid) for order submission.");
+    }
+
+    // --- Validate supported order types ---
+    const supportedOrderTypes = ['testorder', 'drugorder'];
+    if (!supportedOrderTypes.includes(orderType)) {
+        throw new Error(`Unsupported order type "${orderType}". Only ${supportedOrderTypes.join(', ')} are allowed.`);
     }
 
     let headers: Record<string, string>;
@@ -52,23 +51,16 @@ export async function submitNewClinicalOrder(submissionData: NewOrderSubmissionD
         throw new Error("Authentication failed during order submission.");
     }
 
-    // --- Construct the OpenMRS Order Payload ---
-    const payload = {
-        type: orderType, 
+    // --- Construct payload ---
+    const payload: Record<string, any> = {
+        type: orderType,
         patient: patientUuid,
         concept: conceptUuid,
         encounter: encounterUuid,
-        action: "NEW", // Always NEW for creation
+        action: "NEW",
         urgency: urgency || 'ROUTINE',
         instructions: instructions || null,
-        
-        // Conditional fields specific to order types (e.g., TestOrder)
-        ...(orderType === 'testorder' && {
-            specimenSource: specimenSourceUuid || null,
-            // You may need to add additional test-specific fields here (e.g., frequency/schedule)
-        }),
-        
-        // Add other order-type specific properties for Radiology/Procedure if necessary
+        ...(orderType === 'testorder' && { specimenSource: specimenSourceUuid || null })
     };
 
     const url = `${process.env.OPENMRS_API_URL}/order`;
@@ -87,7 +79,7 @@ export async function submitNewClinicalOrder(submissionData: NewOrderSubmissionD
             await handleApiError(response, "submitNewClinicalOrder");
         }
 
-        // Successfully submitted (response status 201 Created)
+        // Order submitted successfully
     } catch (error) {
         console.error("Final network error submitting order:", error);
         throw new Error("Network or unexpected error during order submission.");
