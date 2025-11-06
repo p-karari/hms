@@ -297,7 +297,7 @@ export default function ProgramsDashboard({ patientUuid }: ProgramsDashboardProp
     const ExitProgramModal = () => (
         // Render a basic overlay/modal here
         isExitModalOpen && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+            <div className="fixed inset-0 backdrop-blur-sm bg-opacity-50 z-50 flex items-center justify-center p-4">
                 <div className="bg-white rounded-lg shadow-2xl p-6 w-full max-w-md">
                     <h3 className="text-xl font-bold text-red-700 mb-4 flex items-center border-b pb-2">
                         <X className="w-5 h-5 mr-2" /> Exit Program
@@ -352,7 +352,7 @@ export default function ProgramsDashboard({ patientUuid }: ProgramsDashboardProp
     const StateChangeModal = () => (
         // Render a basic overlay/modal here
         isStateModalOpen && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+            <div className="fixed inset-0 backdrop-blur-sm bg-opacity-50 z-50 flex items-center justify-center p-4">
                 <div className="bg-white rounded-lg shadow-2xl p-6 w-full max-w-md">
                     <h3 className="text-xl font-bold text-blue-700 mb-4 flex items-center border-b pb-2">
                         <Clock className="w-5 h-5 mr-2" /> Change Program State
