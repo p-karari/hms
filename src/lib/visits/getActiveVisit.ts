@@ -2,6 +2,7 @@
 'use server';
 
 import { getAuthHeaders, redirectToLogin } from '../auth/auth';
+import { Encounter } from './getVisitEncounters';
 // Ensure 'Visit' interface is correctly imported or defined here
 // Assuming the following structure for API responses:
 export interface Visit {
@@ -11,6 +12,7 @@ export interface Visit {
     location: { uuid: string; display: string };
     startDatetime: string;
     stopDatetime: string | null;
+    encounters?: Encounter[];
     // ... potentially other fields
 }
 
