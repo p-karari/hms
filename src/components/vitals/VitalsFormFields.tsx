@@ -3,7 +3,7 @@
 import React, { useState, useTransition, useMemo } from 'react';
 import { Loader2, Save } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { ObsPayload, submitEncounter } from '@/lib/encounters/encounter';
+import { ObsPayload } from '@/lib/encounters/encounter';
 
 interface ConceptUuids {
   WEIGHT: string;
@@ -109,20 +109,20 @@ const VitalsFormFields: React.FC<VitalsFormProps> = ({
       return;
     }
 
-    const payload = {
-      patient: patientUuid,
-      encounterDatetime: new Date().toISOString(),
-      encounterType: encounterTypeUuid,
-      location: locationUuid,
-      visit: activeVisitUuid,
-      encounterProviders: [
-        {
-          provider: providerUuid,
-          encounterRole: encounterRoleUuid,
-        },
-      ],
-      obs: observations,
-    };
+    // const payload = {
+    //   patient: patientUuid,
+    //   encounterDatetime: new Date().toISOString(),
+    //   encounterType: encounterTypeUuid,
+    //   location: locationUuid,
+    //   visit: activeVisitUuid,
+    //   encounterProviders: [
+    //     {
+    //       provider: providerUuid,
+    //       encounterRole: encounterRoleUuid,
+    //     },
+    //   ],
+    //   obs: observations,
+    // };
 
     startTransition(async () => {
       try {
