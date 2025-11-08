@@ -1,87 +1,97 @@
 'use server';
 
-import { getAuthHeaders, redirectToLogin } from '@/lib/auth/auth';
+import { getAuthHeaders } from '@/lib/auth/auth';
+// import { getEncounterTypeUuid } from '@/lib/config/encounter'; // your helper
+// import { getProviderUuid } from '@/lib/config/provider'; // uses env
+import { getEncounterTypeUuid } from '../encounters/encounterType';
+import { getSessionLocation } from '../location/location';
+// import { getSessionLocation } from '@/lib/session/getSessionLocation'; // adjust path if needed
 
-// --- Interface for the payload sent to the API ---
 export interface NewOrderSubmissionData {
-    patientUuid: string;
-    conceptUuid: string;
-    orderType: 'testorder' | 'drugorder'; // Only supported types now
-    dateActivated?: string;
-    instructions?: string;
-    encounterUuid: string;
-    specimenSourceUuid?: string; // Only used for lab/test orders
-    urgency?: 'Routine' | 'Stat';
-}
-
-// --- Helper for API Error Checking ---
-async function handleApiError(response: Response, source: string) {
-    if (response.status === 401 || response.status === 403) {
-        redirectToLogin();
-        throw new Error(`Authentication failed: HTTP ${response.status}. Redirecting.`);
-    }
-
-    const errorText = await response.text();
-    console.error(`OpenMRS API Error [${source}] ${response.status}: ${errorText.substring(0, 100)}`);
-    throw new Error(`Failed to submit new order: HTTP ${response.status}.`);
+  patientUuid: string;
+  conceptUuid: string;
+  orderType: 'testorder' | 'drugorder';
+  dateActivated?: string;
+  instructions?: string;
+  specimenSourceUuid?: string;
+  urgency?: 'ROUTINE' | 'STAT';
 }
 
 /**
- * Submits a new clinical order (drug or lab/test) to OpenMRS safely.
- * Prevents unsupported order types from being sent to the API.
+ * Submits a new clinical order (lab/test or drug) by creating an encounter that contains the order.
+ * This mirrors the behavior of the official OpenMRS frontend.
  */
 export async function submitNewClinicalOrder(submissionData: NewOrderSubmissionData): Promise<void> {
-    const { patientUuid, conceptUuid, orderType, encounterUuid, instructions, specimenSourceUuid, urgency } = submissionData;
+  const {
+    patientUuid,
+    conceptUuid,
+    orderType,
+    dateActivated,
+    instructions,
+    specimenSourceUuid,
+    urgency,
+  } = submissionData;
 
-    if (!patientUuid || !conceptUuid || !orderType || !encounterUuid) {
-        throw new Error("Missing required fields (patientUuid, conceptUuid, orderType, encounterUuid) for order submission.");
-    }
+  // --- Validate required fields ---
+  if (!patientUuid || !conceptUuid || !orderType) {
+    throw new Error('Missing required fields for order submission.');
+  }
 
-    // --- Validate supported order types ---
-    const supportedOrderTypes = ['testorder', 'drugorder'];
-    if (!supportedOrderTypes.includes(orderType)) {
-        throw new Error(`Unsupported order type "${orderType}". Only ${supportedOrderTypes.join(', ')} are allowed.`);
-    }
+const providerUuid = process.env.NEXT_PUBLIC_DEFAULT_PROVIDER_UUID;
+if (!providerUuid) {
+  throw new Error("Environment variable NEXT_PUBLIC_DEFAULT_PROVIDER_UUID is missing.");
+}
 
-    let headers: Record<string, string>;
-    try {
-        headers = await getAuthHeaders();
-    } catch {
-        redirectToLogin();
-        throw new Error("Authentication failed during order submission.");
-    }
+  try {
+    // Fetch helper data
+    const [headers, encounterTypeUuid, sessionLocation] = await Promise.all([
+      getAuthHeaders(),
+      getEncounterTypeUuid('Order'),
+      getSessionLocation(),
+    ]);
 
-    // --- Construct payload ---
-    const payload: Record<string, any> = {
-        type: orderType,
-        patient: patientUuid,
-        concept: conceptUuid,
-        encounter: encounterUuid,
-        action: "NEW",
-        urgency: urgency || 'ROUTINE',
-        instructions: instructions || null,
-        ...(orderType === 'testorder' && { specimenSource: specimenSourceUuid || null })
+    // Construct encounter payload (OpenMRS expected structure)
+    const payload = {
+      encounterType: encounterTypeUuid,
+      patient: patientUuid,
+      encounterDatetime: dateActivated || new Date().toISOString(),
+      location: sessionLocation?.uuid,
+      orders: [
+        {
+          type: orderType,
+          action: 'NEW',
+          urgency: urgency || 'ROUTINE',
+          concept: conceptUuid,
+          careSetting: 'OUTPATIENT',
+          orderer: providerUuid,
+          instructions: instructions || '',
+          ...(orderType === 'testorder' && specimenSourceUuid
+            ? { specimenSource: specimenSourceUuid }
+            : {}),
+        },
+      ],
     };
 
-    const url = `${process.env.OPENMRS_API_URL}/order`;
+    const url = `${process.env.OPENMRS_API_URL}/encounter`;
 
-    try {
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                ...headers,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(payload),
-        });
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        ...headers,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
 
-        if (!response.ok) {
-            await handleApiError(response, "submitNewClinicalOrder");
-        }
-
-        // Order submitted successfully
-    } catch (error) {
-        console.error("Final network error submitting order:", error);
-        throw new Error("Network or unexpected error during order submission.");
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('OpenMRS Encounter Submission Error:', errorText);
+      throw new Error(`Order submission failed: HTTP ${response.status}`);
     }
+
+    console.log('✅ Order encounter submitted successfully.');
+  } catch (error) {
+    console.error('Final network error submitting order:', error);
+    throw new Error('Network or unexpected error during order submission.');
+  }
 }
