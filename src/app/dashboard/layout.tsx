@@ -33,14 +33,14 @@ export default async function DashboardLayout({
         <DashboardSidebar /> 
 
         {/* Content Area - Adjusted for sidebar width */}
-        <div className="flex-1 flex flex-col ml-64 min-w-0">
+        <div className="flex-1 flex flex-col lg:ml-56 min-w-0">
           
           {/* Sticky Topbar */}
           <Topbar /> 
           
           {/* Main Content Area with proper padding and constraints */}
-          <main className="flex-1  overflow-y-auto">
-            <div className="max-w-7xl w-full">
+          <main className="flex-1 overflow-y-auto">
+            <div className="w-full">
               {children}
             </div>
           </main>
