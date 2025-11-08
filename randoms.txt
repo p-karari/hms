@@ -1,0 +1,16 @@
+   {
+                "rel": "self",
+                "uri": "http://localhost:8080/openmrs/ws/rest/v1/provider/65acee3a-4f8b-445a-95c3-a6e3f4cafd89",
+                "resourceAlias": "provider"
+            }
+
+
+------------
+
+Mutations, request inspect - "http://localhost:8080/openmrs/ws/rest/v1/programenrollment?patient=e8c6b2bc-e8dd-4e63-85b4-c3de2fa5368a&v=custom:(uuid,display,program,dateEnrolled,dateCompleted,location:(uuid,display),states:(startDate,endDate,voided,state:(uuid,concept:(display))))
+Request Method
+GET", response - "http://localhost:8080/openmrs/ws/rest/v1/programenrollment?patient=e8c6b2bc-e8dd-4e63-85b4-c3de2fa5368a&v=custom:(uuid,display,program,dateEnrolled,dateCompleted,location:(uuid,display),states:(startDate,endDate,voided,state:(uuid,concept:(display))))
+Request Method
+GET", delete route - "http://localhost:8080/openmrs/ws/rest/v1/programenrollment/f8a1305e-8953-4deb-b621-e7160170a8f3
+Request Method
+DELETE"
