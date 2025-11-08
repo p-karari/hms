@@ -4,7 +4,7 @@ import React, { useContext, useState, FormEvent } from 'react';
 import { SessionContext } from '@/lib/context/session-context';
 import { getEncounterTypeUuid } from '@/lib/encounters/encounterType';
 import { getEncounterRoleUuid } from '@/lib/encounters/encounterRole';
-import { getProviderUuid } from '@/lib/config/provider';
+// import { getProviderUuid } from '@/lib/config/provider';
 import { submitEncounter } from '@/lib/encounters/encounter';
 import { getPatientActiveVisit } from '@/lib/visits/getActiveVisit';
 
