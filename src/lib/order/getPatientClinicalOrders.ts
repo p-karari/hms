@@ -1,7 +1,8 @@
 'use server';
 
 import { getAuthHeaders, redirectToLogin } from '@/lib/auth/auth';
-import { ConceptReference } from '@/lib/medications/getPatientMedicationOrders'; // Reusing your existing reference type
+// Assuming ConceptReference is defined elsewhere, reusing the name for context
+import { ConceptReference } from '@/lib/medications/getPatientMedicationOrders'; 
 
 // --- Interface for a Non-Drug Clinical Order (Base on DrugOrder but simplified) ---
 export interface ClinicalOrder {
@@ -31,6 +32,7 @@ export interface ClinicalOrder {
 // --- Helper for API Error Checking (Matching your structure) ---
 async function handleApiError(response: Response, source: string) {
     if (response.status === 401 || response.status === 403) {
+        // NOTE: redirectToLogin is assumed to handle the response appropriately
         redirectToLogin();
         throw new Error(`Authentication failed: HTTP ${response.status}. Redirecting.`);
     }
@@ -43,7 +45,7 @@ async function handleApiError(response: Response, source: string) {
 /**
  * Fetches the patient's entire non-medication clinical order history.
  * Fetches all order types *except* drug orders.
- * * @param patientUuid The UUID of the patient whose orders are being fetched.
+ * @param patientUuid The UUID of the patient whose orders are being fetched.
  * @returns A promise that resolves to an array of ClinicalOrder objects.
  */
 export async function getPatientClinicalOrders(patientUuid: string): Promise<ClinicalOrder[]> {
@@ -62,8 +64,8 @@ export async function getPatientClinicalOrders(patientUuid: string): Promise<Cli
     
     // The OpenMRS REST API allows fetching all order types except DrugOrder (t=drugorder)
     // We use v=full to ensure we get nested details like concept and orderer information.
-    const url = `${process.env.OPENMRS_API_URL}/order?patient=${patientUuid}&v=full`; 
     // NOTE: If your API only returns drug orders by default, you may need to append &t=testorder,radiologyorder,procedureorder
+    const url = `${process.env.OPENMRS_API_URL}/order?patient=${patientUuid}&v=full`; 
 
     try {
         const response = await fetch(url, { 
@@ -94,10 +96,12 @@ export async function getPatientClinicalOrders(patientUuid: string): Promise<Cli
                 dateActivated: order.dateActivated,
                 dateStopped: order.dateStopped,
                 
-                // Status is often derived from dateStopped or a status field if available
-                status: order.dateStopped 
-                        ? 'DISCONTINUED' 
-                        : (order.fulfillerStatus === 'RECEIVED' || order.fulfillerStatus === 'COMPLETED' ? 'COMPLETED' : 'ACTIVE'), // Simplified status
+                // --- MODIFIED STATUS DERIVATION LOGIC ---
+                status: order.dateStopped || order.action === 'DISCONTINUE'
+                        ? 'DISCONTINUED' // If stopped date exists OR the action itself is 'DISCONTINUE', mark it as DISCONTINUED.
+                        : (order.fulfillerStatus === 'RECEIVED' || order.fulfillerStatus === 'COMPLETED' 
+                            ? 'COMPLETED' 
+                            : 'ACTIVE'), // Otherwise, default to ACTIVE if not COMPLETED
                         
                 instructions: order.instructions || order.comment,
             }));
