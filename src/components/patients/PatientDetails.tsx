@@ -25,21 +25,21 @@ const getPreferredName = (person: PatientDetailsType['person']): string => {
 };
 
 // Helper to format an address into a multi-line display string
-const formatAddress = (address: PatientDetailsType['person']['preferredAddress']): string => {
-  if (!address) return 'No address details';
+// const formatAddress = (address: PatientDetailsType['person']['preferredAddress']): string => {
+//   if (!address) return 'No address details';
   
-  const parts = [
-    address.address1, 
-    address.address2, 
-    address.cityVillage, 
-    address.stateProvince, 
-    address.country
-  ].filter(p => p); // Filter out null/empty strings
+//   const parts = [
+//     address.address1, 
+//     address.address2, 
+//     address.cityVillage, 
+//     address.stateProvince, 
+//     address.country
+//   ].filter(p => p); // Filter out null/empty strings
 
-  // Join the parts, excluding duplicates and keeping the most relevant ones.
-  // For the display, a simple comma separation is often best.
-  return parts.join(', ');
-};
+//   // Join the parts, excluding duplicates and keeping the most relevant ones.
+//   // For the display, a simple comma separation is often best.
+//   return parts.join(', ');
+// };
 
 const PatientDetails: React.FC<PatientDetailsProps> = ({
   patientUuid,
@@ -119,68 +119,81 @@ const PatientDetails: React.FC<PatientDetailsProps> = ({
   return (
     <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
       {/* Header Section - Slimmed down */}
-      <div className="px-3 py-2 border-b border-gray-100">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="bg-blue-50 p-1.5 rounded-md border border-blue-100">
-              <User className="w-4 h-4 text-blue-600" />
-            </div>
-            <div>
-              <h2 className="text-base font-semibold text-gray-900 leading-tight">{preferredName}</h2>
-              <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
-                <span className="flex items-center gap-1">
-                  <span className="font-medium text-gray-700">{patient.person.gender || 'N/A'}</span>
-                  • 
-                  <span className="font-medium text-gray-700">{patient.person.age || '0'} years</span>
-                </span>
-                {primaryId && (
-                  <span className="flex items-center gap-1">
-                    <IdCard className="w-3 h-3 text-blue-500" />
-                    <span className="font-medium text-gray-700">{primaryId.identifier}</span>
-                  </span>
-                )}
-              </div>
-            </div>
+    <div className="px-3 py-2 border-b border-gray-100">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="bg-blue-50 p-1.5 rounded-md border border-blue-100">
+            <User className="w-4 h-4 text-blue-600" />
           </div>
-
-          {/* Actions Menu */}
-          <div className="relative" ref={menuRef}>
-            <button
-              onClick={() => setIsMenuOpen(prev => !prev)}
-              className="p-1.5 rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors border border-gray-200"
-              aria-expanded={isMenuOpen}
-              aria-label="Patient Actions Menu"
-            >
-              <Menu className="w-4 h-4" />
-            </button>
-
-            {isMenuOpen && (
-              <div className="absolute right-0 top-full mt-1 w-56 bg-white rounded-md shadow-lg border border-gray-200 z-20 animate-in fade-in slide-in-from-top-1">
-                <div className="flex items-center justify-between px-3 py-1.5 border-b border-gray-100 bg-gray-50 rounded-t-md">
-                  <span className="text-sm font-medium text-gray-900">Actions</span>
-                  <button
-                    onClick={() => setIsMenuOpen(false)}
-                    className="text-gray-400 hover:text-gray-600 transition-colors p-0.5"
-                    aria-label="Close Menu"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </div>
-                <div className="p-1.5">
-                  <PatientActions
-                    patientUuid={patientUuid}
-                    activeVisit={activeVisit}
-                    onActionComplete={() => {
-                      onActionComplete();
-                      setIsMenuOpen(false);
-                    }}
-                  />
-                </div>
-              </div>
-            )}
+          <div>
+            <h2 className="text-base font-semibold text-gray-900 leading-tight">{preferredName}</h2>
+            <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+              <span className="flex items-center gap-1">
+                <span className="font-medium text-gray-700">{patient.person.gender || 'N/A'}</span>
+                • 
+                <span className="font-medium text-gray-700">{patient.person.age || '0'} years</span>
+              </span>
+              {primaryId && (
+                <span className="flex items-center gap-1">
+                  <IdCard className="w-3 h-3 text-blue-500" />
+                  <span className="font-medium text-gray-700">{primaryId.identifier}</span>
+                </span>
+              )}
+            </div>
           </div>
         </div>
+
+        {/* **Added Start Visit Guide** */}
+        <div className='flex items-center gap-3'>
+       
+        <div className="flex items-center gap-2 text-sm font-medium text-blue-600">
+          <span>Start Visit</span>
+          {/* Right arrow pointing towards the menu */}
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
+          </svg>
+        </div>
+        {/* End of Added Start Visit Guide */}
+
+        {/* Actions Menu */}
+        <div className="relative" ref={menuRef}>
+          <button
+            onClick={() => setIsMenuOpen(prev => !prev)}
+            className="p-1.5 rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors border border-gray-200"
+            aria-expanded={isMenuOpen}
+            aria-label="Patient Actions Menu"
+          >
+            <Menu className="w-4 h-4" />
+          </button>
+
+          {isMenuOpen && (
+            <div className="absolute right-0 top-full mt-1 w-56 bg-white rounded-md shadow-lg border border-gray-200 z-20 animate-in fade-in slide-in-from-top-1">
+              <div className="flex items-center justify-between px-3 py-1.5 border-b border-gray-100 bg-gray-50 rounded-t-md">
+                <span className="text-sm font-medium text-gray-900">Actions</span>
+                <button
+                  onClick={() => setIsMenuOpen(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors p-0.5"
+                  aria-label="Close Menu"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+              <div className="p-1.5">
+                <PatientActions
+                  patientUuid={patientUuid}
+                  activeVisit={activeVisit}
+                  onActionComplete={() => {
+                    onActionComplete();
+                    setIsMenuOpen(false);
+                  }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+        </div>
       </div>
+    </div>
 
       {/* Details Section - Slimmed down */}
       <div className="p-3">
