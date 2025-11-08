@@ -3,36 +3,29 @@
 import React, { useState, useEffect, useCallback, useMemo, JSX } from 'react';
 import { Loader2, AlertTriangle, CheckCircle, Clock, XCircle, Edit } from 'lucide-react';
 
-// --- Import Necessary Actions and Types ---
-import { updatePatientCondition } from '@/lib/conditions/submitPatientCondition';
-import { formatDate } from '@/lib/utils/utils'; // Reusing your utility function
+import { formatDate } from '@/lib/utils/utils';
 import { Condition, getPatientConditions } from '@/lib/conditions/getpatientConditions';
+import { updatePatientCondition } from '@/lib/conditions/updatePacientConditions';
 
 interface ConditionListTableProps {
     patientUuid: string;
-    // Key used by the parent dashboard to force a refresh after creation or status change
     refreshKey: number; 
-    onStatusChange: () => void; // Callback to notify parent of an update
+    onStatusChange: () => void; 
 }
 
-/**
- * Displays the patient's problem list, categorized by clinical status.
- */
 export default function ConditionListTable({ patientUuid, refreshKey, onStatusChange }: ConditionListTableProps) {
     const [conditions, setConditions] = useState<Condition[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // --- Data Fetching ---
     const fetchConditions = useCallback(async () => {
         setIsLoading(true);
         setError(null);
         try {
             const data = await getPatientConditions(patientUuid);
-            // Sort by status priority: ACTIVE > INACTIVE > RESOLVED
             data.sort((a, b) => {
-                const statusOrder = ['ACTIVE', 'INACTIVE', 'RESOLVED'];
-                return statusOrder.indexOf(a.clinicalStatus) - statusOrder.indexOf(b.clinicalStatus);
+                const order = ['active', 'inactive', 'resolved'];
+                return order.indexOf(a.clinicalStatus) - order.indexOf(b.clinicalStatus);
             });
             setConditions(data);
         } catch (e) {
@@ -44,80 +37,59 @@ export default function ConditionListTable({ patientUuid, refreshKey, onStatusCh
         }
     }, [patientUuid]);
 
-    // Re-fetch data whenever the refreshKey changes
     useEffect(() => {
         fetchConditions();
     }, [fetchConditions, refreshKey]);
 
-    // --- Status Update Logic ---
     const handleResolveCondition = async (conditionUuid: string) => {
-        if (!confirm("Are you sure you want to RESOLVE this condition? This will update its status to 'Resolved' with today's date.")) {
-            return;
-        }
-
-        setIsLoading(true); // Disable buttons during update
+        if (!confirm("Resolve this condition?")) return;
+        setIsLoading(true);
         try {
-            await updatePatientCondition({
-                conditionUuid: conditionUuid,
-                clinicalStatus: 'RESOLVED',
-                // endDate will default to today if not provided, per the action file logic
-            });
-            onStatusChange(); // Notify parent to refresh data
-            alert("Condition successfully resolved.");
+            await updatePatientCondition({ conditionUuid, clinicalStatus: 'resolved' });
+            onStatusChange();
+            alert("Condition resolved.");
         } catch (e) {
-            console.error("Failed to resolve condition:", e);
-            setError("Failed to update condition status.");
+            console.error(e);
+            setError("Failed to update condition.");
         } finally {
             setIsLoading(false);
         }
     };
-    
-    // --- Utility Functions for Display ---
+
     const getStatusStyles = (status: Condition['clinicalStatus']) => {
         switch (status) {
-            case 'ACTIVE': return { icon: <CheckCircle className="w-4 h-4 mr-1 text-green-700" />, textClass: 'bg-green-100 text-green-800 border-green-300' };
-            case 'INACTIVE': return { icon: <Clock className="w-4 h-4 mr-1 text-yellow-700" />, textClass: 'bg-yellow-100 text-yellow-800 border-yellow-300' };
-            case 'RESOLVED': return { icon: <XCircle className="w-4 h-4 mr-1 text-gray-500" />, textClass: 'bg-gray-100 text-gray-600 border-gray-300' };
-            default: return { icon: <Edit className="w-4 h-4 mr-1 text-blue-700" />, textClass: 'bg-blue-100 text-blue-800 border-blue-300' };
+            case 'active': return { icon: <CheckCircle className="w-3.5 h-3.5 mr-1.5 text-green-600" />, textClass: 'bg-green-50 text-green-700 border-green-200' };
+            case 'inactive': return { icon: <Clock className="w-3.5 h-3.5 mr-1.5 text-yellow-600" />, textClass: 'bg-yellow-50 text-yellow-700 border-yellow-200' };
+            case 'resolved': return { icon: <XCircle className="w-3.5 h-3.5 mr-1.5 text-gray-500" />, textClass: 'bg-gray-50 text-gray-600 border-gray-200' };
+            default: return { icon: <Edit className="w-3.5 h-3.5 mr-1.5 text-blue-600" />, textClass: 'bg-blue-50 text-blue-700 border-blue-200' };
         }
     };
 
-    const activeConditions = useMemo(() => conditions.filter(c => c.clinicalStatus === 'ACTIVE'), [conditions]);
-    const resolvedConditions = useMemo(() => conditions.filter(c => c.clinicalStatus !== 'ACTIVE'), [conditions]);
+    const activeConditions = useMemo(() => conditions.filter(c => c.clinicalStatus === 'active'), [conditions]);
+    const resolvedConditions = useMemo(() => conditions.filter(c => c.clinicalStatus !== 'active'), [conditions]);
 
+    if (error) return (
+        <div className="text-center p-4 border border-red-200 bg-red-50 text-red-600 rounded-lg flex items-center justify-center text-sm">
+            <AlertTriangle className="w-4 h-4 mr-2" /> {error}
+        </div>
+    );
 
-    if (error) {
-        return (
-            <div className="text-center p-8 border border-red-300 bg-red-50 text-red-700 rounded-lg flex items-center justify-center">
-                <AlertTriangle className="w-6 h-6 mr-3" />
-                {error}
-            </div>
-        );
-    }
+    if (isLoading && conditions.length === 0) return (
+        <div className="text-center p-6 text-gray-600">
+            <Loader2 className="w-5 h-5 mx-auto animate-spin mb-2" />
+            <div className="text-sm">Loading problem list...</div>
+        </div>
+    );
 
-    if (isLoading && conditions.length === 0) {
-        return (
-            <div className="text-center p-12 text-blue-600">
-                <Loader2 className="w-8 h-8 mx-auto animate-spin mb-3" />
-                Loading problem list...
-            </div>
-        );
-    }
-    
-    // --- Component JSX ---
     return (
-        <div className="space-y-8">
-            
-            {/* --- Active Problems Section --- */}
-            <div className="bg-white shadow-lg rounded-xl">
-                <div className="p-4 border-b bg-red-50 rounded-t-xl">
-                    <h3 className="text-xl font-bold text-red-700">Active Problems ({activeConditions.length})</h3>
-                    <p className="text-sm text-red-600">These are the patient&apos;s current, ongoing health issues.</p>
+        <div className="space-y-4">
+            <div className="bg-white border border-gray-200 rounded-lg">
+                <div className="p-3 border-b bg-red-50">
+                    <h3 className="text-base font-semibold text-gray-900">Active Problems ({activeConditions.length})</h3>
                 </div>
-                
                 {activeConditions.length === 0 ? (
-                    <div className="p-8 text-center text-gray-500 border-t border-dashed rounded-b-xl">
-                        No **Active** conditions currently documented.
+                    <div className="p-4 text-center text-gray-500 text-sm">
+                        No active conditions
                     </div>
                 ) : (
                     <ConditionTableBody 
@@ -130,22 +102,19 @@ export default function ConditionListTable({ patientUuid, refreshKey, onStatusCh
                 )}
             </div>
 
-            {/* --- Resolved/Inactive Problems Section --- */}
-            <div className="bg-white shadow-lg rounded-xl">
-                <div className="p-4 border-b bg-gray-50 rounded-t-xl">
-                    <h3 className="text-xl font-bold text-gray-700">History / Resolved Problems ({resolvedConditions.length})</h3>
-                    <p className="text-sm text-gray-500">Past problems or conditions currently in remission.</p>
+            <div className="bg-white border border-gray-200 rounded-lg">
+                <div className="p-3 border-b bg-gray-50">
+                    <h3 className="text-base font-semibold text-gray-900">History / Resolved Problems ({resolvedConditions.length})</h3>
                 </div>
-                
                 {resolvedConditions.length === 0 ? (
-                    <div className="p-8 text-center text-gray-400 border-t border-dashed rounded-b-xl">
-                        No resolved conditions documented.
+                    <div className="p-4 text-center text-gray-400 text-sm">
+                        No resolved conditions
                     </div>
                 ) : (
                     <ConditionTableBody 
                         conditions={resolvedConditions} 
                         getStatusStyles={getStatusStyles} 
-                        handleResolveCondition={() => {}} // No action on resolved items
+                        handleResolveCondition={() => {}}
                         isDisabled={isLoading}
                         isActionable={false}
                     />
@@ -154,9 +123,6 @@ export default function ConditionListTable({ patientUuid, refreshKey, onStatusCh
         </div>
     );
 }
-
-
-// --- Nested Component for Table Rendering ---
 
 interface TableBodyProps {
     conditions: Condition[];
@@ -172,57 +138,34 @@ function ConditionTableBody({ conditions, getStatusStyles, handleResolveConditio
             <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-white">
                     <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Diagnosis</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">OnsetDate</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Resolved</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Diagnosis</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Status</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Onset Date</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Resolved Date</th>
+                        <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">Actions</th>
                     </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                    {conditions.map((condition) => {
+                    {conditions.map(condition => {
                         const { icon, textClass } = getStatusStyles(condition.clinicalStatus);
                         return (
-                            <tr key={condition.uuid} className="hover:bg-gray-50 transition duration-100">
-                                
-                                {/* Diagnosis */}
-                                <td className="px-6 py-4 text-sm font-medium text-gray-900 max-w-sm">
-                                    {condition.condition.display}
-                                    <span className="block text-xs text-gray-500 mt-0.5">
-                                        Verification: {condition.verificationStatus}
+                            <tr key={condition.uuid} className="hover:bg-gray-50">
+                                <td className="px-4 py-3 text-sm text-gray-900 max-w-sm font-medium">{condition.code?.coding[0]?.display || 'N/A'}</td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                    <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded border ${textClass}`}>
+                                        {icon} {condition.clinicalStatus}
                                     </span>
                                 </td>
-                                
-                                {/* Status */}
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                    <span 
-                                        className={`inline-flex px-3 py-1 text-xs leading-5 rounded-full font-semibold border ${textClass}`}
-                                    >
-                                        {icon}
-                                        {condition.clinicalStatus}
-                                    </span>
-                                </td>
-                                
-                                {/* Onset Date */}
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                                    {condition.onsetDate ? formatDate(condition.onsetDate) : 'N/A'}
-                                </td>
-                                
-                                {/* Resolved Date */}
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                                    {condition.endDate ? formatDate(condition.endDate) : '—'}
-                                </td>
-                                
-                                {/* Actions */}
-                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">{condition.onsetDateTime ? formatDate(condition.onsetDateTime) : 'N/A'}</td>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">{condition.abatementDateTime ? formatDate(condition.abatementDateTime) : '—'}</td>
+                                <td className="px-4 py-3 whitespace-nowrap text-right">
                                     {isActionable && (
-                                        <button
-                                            onClick={() => handleResolveCondition(condition.uuid)}
-                                            className="text-red-500 hover:text-red-700 disabled:opacity-50"
-                                            title="Mark as Resolved"
+                                        <button onClick={() => handleResolveCondition(condition.uuid)}
+                                            className="text-gray-400 hover:text-red-500 transition-colors"
                                             disabled={isDisabled}
+                                            title="Mark as Resolved"
                                         >
-                                            <XCircle className="w-5 h-5" />
+                                            <XCircle className="w-4 h-4" />
                                         </button>
                                     )}
                                 </td>
