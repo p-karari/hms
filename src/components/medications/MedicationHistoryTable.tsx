@@ -41,21 +41,21 @@ export default function MedicationHistoryTable({ patientUuid }: MedicationHistor
     
     const getStatusIcon = (order: DrugOrder) => {
         if (order.dateStopped) {
-            return <XOctagon className="w-3 h-3 text-red-500 mr-1" />;
+            return <XOctagon className="w-3 h-3 text-red-500 mr-1.5" />;
         }
-        return <CheckCircle className="w-3 h-3 text-green-500 mr-1"/>;
+        return <CheckCircle className="w-3 h-3 text-green-500 mr-1.5"/>;
     };
 
     if (isLoading) {
-        return <div className="p-3 text-sm text-gray-500">Loading medications...</div>;
+        return <div className="p-2 text-xs text-gray-500">Loading medications...</div>;
     }
 
     if (error) {
-        return <div className="p-3 text-sm text-red-600 border border-red-200 rounded">{error}</div>;
+        return <div className="p-2 text-xs text-red-600 border border-red-200 rounded">{error}</div>;
     }
 
     if (orders.length === 0) {
-        return <div className="p-4 text-sm text-gray-500 text-center border border-dashed rounded">No medication orders found.</div>;
+        return <div className="p-3 text-xs text-gray-500 text-center border border-dashed rounded">No medication orders found.</div>;
     }
 
     return (
@@ -63,35 +63,35 @@ export default function MedicationHistoryTable({ patientUuid }: MedicationHistor
             <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                     <tr>
-                        <th className="px-3 py-2 text-left text-xs text-gray-500 uppercase w-1/4">Medication</th>
-                        <th className="px-3 py-2 text-left text-xs text-gray-500 uppercase w-1/4">Dose & Frequency</th>
-                        <th className="px-3 py-2 text-left text-xs text-gray-500 uppercase">Instructions</th>
-                        <th className="px-3 py-2 text-left text-xs text-gray-500 uppercase">Status</th>
-                        <th className="px-3 py-2 text-left text-xs text-gray-500 uppercase w-[10%]">Actions</th>
+                        <th className="px-2 py-1.5 text-left text-xs text-gray-500 uppercase w-1/4">Medication</th>
+                        <th className="px-2 py-1.5 text-left text-xs text-gray-500 uppercase w-1/4">Dose & Frequency</th>
+                        <th className="px-2 py-1.5 text-left text-xs text-gray-500 uppercase">Instructions</th>
+                        <th className="px-2 py-1.5 text-left text-xs text-gray-500 uppercase">Status</th>
+                        <th className="px-2 py-1.5 text-left text-xs text-gray-500 uppercase w-[10%]">Actions</th>
                     </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                     {orders.map((order) => (
                         <tr key={order.uuid} className="hover:bg-gray-50">
-                            <td className="px-3 py-2 text-sm">
-                                <div className="font-medium text-gray-900">{order.drug?.display || 'Drug Name Missing'}</div>
+                            <td className="px-2 py-1.5">
+                                <div className="font-medium text-gray-900 text-sm">{order.drug?.display || 'Drug Name Missing'}</div>
                                 <div className="text-xs text-gray-500">{order.drug?.strength}</div>
                             </td>
-                            <td className="px-3 py-2 text-sm text-gray-600">
+                            <td className="px-2 py-1.5 text-sm text-gray-600">
                                 <span className="font-medium">{order.dose} {order.doseUnits.display}</span>
-                                <span className="mx-1">•</span>
+                                <span className="mx-1 text-gray-300">•</span>
                                 {order.frequency.display}
                             </td>
-                            <td className="px-3 py-2 text-sm text-gray-600 max-w-xs">
+                            <td className="px-2 py-1.5 text-sm text-gray-600 max-w-xs">
                                 {order.instructions || `Dispense ${order.quantity} ${order.quantityUnits.display}`}
                             </td>
-                            <td className="px-3 py-2 text-sm">
-                                <div className="flex items-center">
+                            <td className="px-2 py-1.5 text-sm">
+                                <div className="flex items-center text-gray-600">
                                     {getStatusIcon(order)}
                                     {order.dateStopped ? `Stopped` : 'Active'}
                                 </div>
                             </td>
-                            <td className="px-3 py-2 text-sm">
+                            <td className="px-2 py-1.5">
                                 <RenewDiscontinueActions
                                     order={order}
                                     sessionData={sessionData}
