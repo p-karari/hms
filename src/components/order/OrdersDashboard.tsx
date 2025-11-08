@@ -71,10 +71,10 @@ export default function OrdersDashboard({
             {/* 4. New Order Modal */}
             <NewOrderModal
                 patientUuid={patientUuid}
-                currentEncounterUuid={currentEncounterUuid}
+                // currentEncounterUuid={currentEncounterUuid}
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
-                onOrderSuccess={handleOrderUpdate} // Refresh on success
+                onOrderSuccess={handleOrderUpdate}
             />
 
             {!currentEncounterUuid && (
