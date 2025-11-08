@@ -2,23 +2,27 @@
 
 import { getAuthHeaders, redirectToLogin } from '@/lib/auth/auth'; 
 
-// --- Interface for New Immunization Submission ---
+// --- Interface for New Immunization Submission (Updated for FHIR context) ---
+// Note the inclusion of necessary FHIR fields (lot, manufacturer, dose) 
+// and the required Encounter reference (visitUuid).
 export interface NewImmunizationSubmissionData {
     patientUuid: string;
-    vaccineConceptUuid: string; // The UUID of the vaccine administered (e.g., 'MMR')
-    administrationDate: string; // Date of administration (ISO format)
-    locationUuid: string;       // Location where the vaccine was given
-    providerUuid: string;       // The provider who administered/recorded it
-    // Optional: doseSequence (If your implementation tracks this via another Obs)
+    vaccineConceptUuid: string; // The UUID of the vaccine administered
+    vaccineDisplay: string;     // The display name of the vaccinef
+    occurrenceDateTime: string; // Date and Time of administration (ISO format, e.g., 'YYYY-MM-DDThh:mm:ss.000Z')
+    lotNumber: string;
+    expirationDate: string;     // Expiration Date (Date only, e.g., 'YYYY-MM-DD')
+    manufacturer: string;       // Manufacturer display name
+    doseNumber: number;         // Dose number in series (e.g., 1, 2, 3)
+    
+    // Context needed for FHIR references
+    visitUuid: string;          // The UUID of the current active Visit (used as Encounter reference)
+    locationUuid: string;       // Location UUID
+    practitionerUuid: string;   // The Practitioner UUID who administered/recorded it
 }
 
-// --- Configuration Constants ---
-// NOTE: These concept UUIDs/names must match your OpenMRS configuration
-const IMMUNIZATION_ENCOUNTER_TYPE_NAME = "IMMUNIZATION RECORD";
-const VACCINE_ADMINISTERED_CONCEPT_NAME = "VACCINE ADMINISTERED";
-const VACCINE_ROUTE_CONCEPT_NAME = "VACCINE ROUTE"; // e.g., 'Intramuscular' (if tracked)
-const DEFAULT_ROUTE_CONCEPT_UUID = "uuid-for-intramuscular-concept"; 
-
+// --- API Configuration ---
+const FHIR_IMMUNIZATION_URL = `${process.env.OPENMRS_API_URL_ALT}/Immunization`;
 
 // --- Helper for API Error Checking ---
 async function handleApiError(response: Response, source: string) {
@@ -28,114 +32,99 @@ async function handleApiError(response: Response, source: string) {
     }
 
     const errorText = await response.text();
-    console.error(`OpenMRS API Error [${source}] ${response.status}: ${errorText.substring(0, 100)}`);
+    console.error(`API Error [${source}] ${response.status}: ${errorText.substring(0, 100)}`);
     throw new Error(`Failed to submit immunization: HTTP ${response.status}.`);
 }
 
 /**
- * Submits a new patient immunization record by creating an Encounter with necessary Observations (Obs).
+ * Submits a new patient immunization record by creating a FHIR R4 Immunization resource.
+ * Uses the confirmed **FHIR R4 API**: /ws/fhir2/R4/Immunization (POST)
  *
- * @param submissionData The structured data payload for the new immunization.
+ * @param data The structured data payload for the new immunization.
  * @returns A promise that resolves when the immunization is successfully created.
  */
-export async function submitPatientImmunization(submissionData: NewImmunizationSubmissionData): Promise<void> {
+export async function submitPatientImmunization(data: NewImmunizationSubmissionData): Promise<void> {
     const { 
         patientUuid, 
         vaccineConceptUuid, 
-        administrationDate, 
+        vaccineDisplay,
+        occurrenceDateTime, 
+        lotNumber,
+        expirationDate,
+        manufacturer,
+        doseNumber,
+        visitUuid, 
         locationUuid, 
-        providerUuid 
-    } = submissionData;
+        practitionerUuid 
+    } = data;
 
-    if (!patientUuid || !vaccineConceptUuid || !administrationDate || !locationUuid || !providerUuid) {
-        throw new Error("Missing required fields for immunization submission.");
+    if (!patientUuid || !vaccineConceptUuid || !occurrenceDateTime || !visitUuid || !locationUuid || !practitionerUuid) {
+        throw new Error("Missing critical required fields for immunization submission.");
     }
 
-    let headers: Record<string, string>;
-    try {
-        headers = await getAuthHeaders();
-    } catch {
+    const headers = await getAuthHeaders().catch(() => {
         redirectToLogin();
         throw new Error("Authentication failed during immunization submission.");
-    }
+    });
     
-    // --- STEP 1: Get the UUIDs for required concept/type names (if not hardcoded) ---
-    // NOTE: In a real app, this lookup should be cached or done in a startup action.
-    const getConceptUuidByName = async (name: string): Promise<string> => {
-        const searchUrl = `${process.env.OPENMRS_API_URL}/concept?q=${encodeURIComponent(name)}&v=custom:(uuid)`;
-        const response = await fetch(searchUrl, { headers, cache: 'force-cache' });
-        const data = await response.json();
-        return data.results?.[0]?.uuid;
-    };
-    
-    const getEncounterTypeUuidByName = async (name: string): Promise<string> => {
-        const searchUrl = `${process.env.OPENMRS_API_URL}/encountertype?q=${encodeURIComponent(name)}&v=custom:(uuid)`;
-        const response = await fetch(searchUrl, { headers, cache: 'force-cache' });
-        const data = await response.json();
-        return data.results?.[0]?.uuid;
-    };
-    
-    // Perform necessary lookups
-    const [encounterTypeUuid, vaccineAdministeredConceptUuid, vaccineRouteConceptUuid] = await Promise.all([
-        getEncounterTypeUuidByName(IMMUNIZATION_ENCOUNTER_TYPE_NAME),
-        getConceptUuidByName(VACCINE_ADMINISTERED_CONCEPT_NAME),
-        getConceptUuidByName(VACCINE_ROUTE_CONCEPT_NAME),
-    ]);
-    
-    if (!encounterTypeUuid || !vaccineAdministeredConceptUuid) {
-        throw new Error("Missing critical concept/encounter type configurations for immunization recording.");
-    }
+    // FHIR references
+    const patientReference = `Patient/${patientUuid}`;
+    const encounterReference = `Encounter/${visitUuid}`; // OpenMRS uses Visit UUID as Encounter reference
+    const locationReference = `Location/${locationUuid}`;
+    const practitionerReference = `Practitioner/${practitionerUuid}`;
 
-    // --- STEP 2: Construct the Encounter Payload ---
-    const payload = {
-        patient: patientUuid,
-        encounterType: encounterTypeUuid,
-        encounterDatetime: administrationDate, // Use administration date as encounter date
-        location: locationUuid,
-        // The provider recorded against the encounter
-        encounterProviders: [
+    // 🔑 FHIR Payload construction based on the successful POST example you provided
+    const fhirPayload = {
+        resourceType: "Immunization",
+        status: "completed",
+        
+        // References
+        patient: { type: "Patient", reference: patientReference },
+        encounter: { type: "Encounter", reference: encounterReference }, 
+        location: { type: "Location", reference: locationReference },
+
+        occurrenceDateTime: occurrenceDateTime,
+        
+        vaccineCode: {
+            coding: [
+                {
+                    code: vaccineConceptUuid, // OpenMRS Concept UUID
+                    display: vaccineDisplay,
+                },
+            ],
+        },
+        manufacturer: { display: manufacturer || 'Unknown' },
+        lotNumber: lotNumber,
+        expirationDate: expirationDate, // FHIR date format ('YYYY-MM-DD')
+
+        performer: [
             {
-                provider: providerUuid,
-                encounterRole: "uuid-for-clinician-role" // Specific role required by some OpenMRS setups
-            }
+                actor: {
+                    type: "Practitioner",
+                    reference: practitionerReference,
+                },
+            },
         ],
-        // The observations (Obs) that document the vaccine and details
-        obs: [
+        protocolApplied: [
             {
-                // Obs 1: The administered vaccine (concept=VACCINE ADMINISTERED, value=MMR)
-                person: patientUuid,
-                obsDatetime: administrationDate,
-                concept: vaccineAdministeredConceptUuid,
-                value: vaccineConceptUuid, // The actual vaccine concept UUID
+                doseNumberPositiveInt: doseNumber,
             },
-            {
-                // Obs 2: The route (concept=VACCINE ROUTE, value=INTRAMUSCULAR)
-                person: patientUuid,
-                obsDatetime: administrationDate,
-                concept: vaccineRouteConceptUuid,
-                value: DEFAULT_ROUTE_CONCEPT_UUID, 
-            },
-            // Add other required Obs here (e.g., Lot Number, Dose Quantity)
-        ]
+        ],
     };
-
-    const url = `${process.env.OPENMRS_API_URL}/encounter`;
 
     try {
-        const response = await fetch(url, {
+        const response = await fetch(FHIR_IMMUNIZATION_URL, {
             method: 'POST',
-            headers: {
-                ...headers,
-                'Content-Type': 'application/json',
+            headers: { 
+                ...headers, 
+                'Content-Type': 'application/fhir+json' // Use specific FHIR content type
             },
-            body: JSON.stringify(payload),
+            body: JSON.stringify(fhirPayload)
         });
 
         if (!response.ok) {
-            await handleApiError(response, "submitPatientImmunization");
+            await handleApiError(response, 'submitPatientImmunization (FHIR)');
         }
-
-        // Successfully submitted (response status 201 Created)
     } catch (error) {
         console.error("Final network error submitting immunization:", error);
         throw new Error("Network or unexpected error during immunization submission.");
