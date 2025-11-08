@@ -1,38 +1,39 @@
 'use server';
 
 import { getAuthHeaders, redirectToLogin } from '@/lib/auth/auth';
-import { ConceptReference } from '@/lib/medications/getPatientMedicationOrders'; // Reusing ConceptReference type
+
+export interface ConceptReference {
+    uuid: string;
+    display: string; 
+    // Added 'name' to the ConceptReference type to support robust display logic in the client component
+    name?: string; 
+}
 
 // --- Core Program Enrollment Interfaces ---
 
-// Represents a state within a program (e.g., "Active on Treatment", "Lost to Follow-up")
 export interface ProgramState {
     uuid: string;
-    startDate: string; // Date the patient entered this specific state
-    // The concept that defines the state (e.g., 'ON ANTIRETROVIRALS')
+    startDate: string; 
     state: ConceptReference; 
-    // The provider/person who recorded this state change
     creator: { uuid: string; display: string } | null;
 }
 
-// Represents the patient's enrollment in one specific program
 export interface ProgramEnrollment {
     uuid: string;
     
-    // The program the patient is enrolled in (e.g., 'HIV Program')
-    program: { uuid: string; display: string }; 
+    program: { 
+        uuid: string; 
+        display: string;
+        name?: string; 
+        description?: string;
+    }; 
     
-    // Date the patient first enrolled in the program
+    display: string;
     dateEnrolled: string;
-    
-    // Date the patient exited/completed the program (if applicable)
     dateCompleted: string | null; 
-    
-    // The current status/state of the patient within the program
     voided: boolean;
-    
-    // The chronological history of states the patient has passed through in the program
     states: ProgramState[];
+    location: { uuid: string; display: string };
 }
 
 // --- Helper for API Error Checking ---
@@ -68,13 +69,12 @@ export async function getPatientProgramEnrollments(patientUuid: string): Promise
         return [];
     }
 
-    // Fetch all program enrollments for the patient. v=full is necessary to get the states history.
     const url = `${process.env.OPENMRS_API_URL}/programenrollment?patient=${patientUuid}&v=full`;
 
     try {
         const response = await fetch(url, { 
             headers, 
-            cache: 'no-store' // Critical for up-to-date status
+            cache: 'no-store' 
         });
 
         if (!response.ok) {
@@ -84,12 +84,10 @@ export async function getPatientProgramEnrollments(patientUuid: string): Promise
 
         const data: { results: ProgramEnrollment[] } = await response.json();
         
-        // Filter out voided enrollment records defensively
         const activeRecords = data.results.filter(enrollment => !enrollment.voided);
         
-        // Sort by enrollment date, newest first
         activeRecords.sort((a, b) => new Date(b.dateEnrolled).getTime() - new Date(a.dateEnrolled).getTime());
-        
+        console.log(activeRecords)
         return activeRecords;
 
     } catch (error) {
