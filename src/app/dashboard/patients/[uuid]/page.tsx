@@ -4,48 +4,29 @@
 
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { useParams, usePathname } from 'next/navigation';
-// 💡 NEW IMPORTS: Bring back PatientDetails for rendering here
+
 import PatientDetails from '@/components/patients/PatientDetails'; 
 import PatientEncounters from '@/components/patients/PatientEncounters';
-import PatientObservations from '@/components/patients/PatientObservations';
 import PatientVisits from '@/components/patients/PatientVisits';
-import { Activity, AlertCircle } from 'lucide-react';
+
+// import { Activity, AlertCircle } from 'lucide-react';
 import { getPatientActiveVisit } from '@/lib/visits/getActiveVisit';
 import { Visit } from '@/lib/patients/manageVisits';
-// Import the Provider component
 import { PatientDashboardProvider } from '@/components/context/patient-dashboard-context'; 
+
+// 💡 NEW IMPORT: The component containing all the summary cards
+import PatientCardSummaryView from '@/components/summary/PatientCardSummaryView';
 
 
 // --- TYPE DEFINITIONS (Unchanged) ---
 interface PatientContentProps {
   patientUuid: string;
   clinicalKey: string;
+  onActionComplete: () => void;
   onActiveVisitChange?: (visit: Visit | null) => void; 
 }
 
-// --- Component Definitions (Unchanged: PatientSummaryView, PlaceholderView, TabComponentMap) ---
-const PatientSummaryView: React.FC<PatientContentProps> = ({ patientUuid, clinicalKey }) => (
-  // ... (PatientSummaryView implementation) ...
-  <div className="space-y-4">
-    <div className="flex items-center gap-2 pb-2 border-b border-gray-200">
-      <Activity className="w-4 h-4 text-gray-600" />
-      <h2 className="text-sm font-semibold">Patient Summary</h2>
-    </div>
-    
-    <PatientObservations 
-      key={`${clinicalKey}-obs-summary`}
-      patientUuid={patientUuid} 
-    />
-    
-    <div className="flex items-start gap-2 p-3 bg-red-50 rounded border border-red-200">
-      <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />
-      <div>
-        <h3 className="text-sm font-medium text-red-800">Active Conditions</h3>
-        <p className="text-xs text-red-600">No active conditions recorded</p>
-      </div>
-    </div>
-  </div>
-);
+// --- Component Definitions ---
 
 const PlaceholderView: React.FC<{ title: string }> = ({ title }) => (
   <div className="text-sm">
@@ -54,9 +35,10 @@ const PlaceholderView: React.FC<{ title: string }> = ({ title }) => (
   </div>
 );
 
+// 💡 UPDATE: The '/' path now points to PatientCardSummaryView.
 const TabComponentMap: Record<string, React.FC<PatientContentProps>> = {
-  '/': PatientSummaryView, 
-  '/vitals': PatientObservations,       
+  '/': PatientCardSummaryView, // <<<< DEFAULT VIEW IS THE NEW SUMMARY CARD VIEW
+  '/vitals': () => <PlaceholderView title="Vitals" />, 
   '/medications': () => <PlaceholderView title="Medications" />,
   '/results': () => <PlaceholderView title="Lab Results" />,
   '/orders': () => <PlaceholderView title="Orders" />,
@@ -118,10 +100,11 @@ const PatientDashboardPage: React.FC = () => {
     return match ? `/${match[1]}` : '/';
   }, [routerPathname, patientBaseUrl]);
   
-  const ActiveComponent = TabComponentMap[currentPathSegment] || PatientSummaryView;
+  // 💡 UPDATE: Default to PatientCardSummaryView if the segment is not found
+  const ActiveComponent = TabComponentMap[currentPathSegment] || PatientCardSummaryView;
 
   return (
-    // 💡 FIX: Wrap the entire dynamic content AND PatientDetails in the Provider
+    // FIX: Wrap the entire dynamic content AND PatientDetails in the Provider
     <PatientDashboardProvider 
       activeVisit={activeVisit} 
       onActionComplete={handleActionComplete}
@@ -162,7 +145,8 @@ const PatientDashboardPage: React.FC = () => {
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <ActiveComponent 
             patientUuid={patientUuid} 
-            clinicalKey={clinicalKey} 
+            clinicalKey={clinicalKey}
+            onActionComplete={handleActionComplete} 
             onActiveVisitChange={
               currentPathSegment === '/' || currentPathSegment === '/visits' 
               ? handleActiveVisitChange 
