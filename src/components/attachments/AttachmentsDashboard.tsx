@@ -64,7 +64,7 @@ const providerId = process.env.NEXT_PUBLIC_PROVIDER_UUID!;
         } finally {
             setIsLoadingContext(false);
         }
-    }, [patientUuid]);
+    }, [patientUuid, providerId]);
 
     useEffect(() => {
         fetchInitialData();
