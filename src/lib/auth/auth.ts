@@ -40,7 +40,7 @@ export async function login(prevState: {error: string | null}, formData:FormData
                 httpOnly: true,
                 path: "/",
                 secure: process.env.NODE_ENV === "production",
-                maxAge: 18000,
+                maxAge: 7200,
             });
             }
         }
@@ -64,7 +64,8 @@ export async function getAuthHeaders(): Promise<AuthHeaders>{
     const jsessionid = cookieStore.get('JSESSIONID')?.value;
 
     if (!jsessionid) {
-        throw new Error("Missing authentication session.");
+        cookieStore.delete('JSESSIONID');
+        redirect("/login");
     }
     
     return {
@@ -78,8 +79,17 @@ export async function redirectToLogin() {
     // Ensure we obtain the cookie store in the current request context
     try {
         const cookieStore = await cookies();
+        const jsessionid = cookieStore.get('JSESSIONID')?.value;
+
         cookieStore.delete('JSESSIONID');
+        if (!jsessionid) {
+        cookieStore.delete('JSESSIONID');
+        redirect("/login");
+    }
     } catch (err) {
+        if (isRedirectError(err)) {
+            throw err;
+        }
         // If cookies() cannot be accessed (no request context), just proceed to redirect.
         // We avoid throwing here to prevent uncaught ReferenceError in build/SSR.
         console.warn('redirectToLogin: cookies() not available in this context.', err);
