@@ -2,58 +2,49 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Loader2, AlertTriangle, Syringe, CheckCircle, Clock } from 'lucide-react';
-
-// --- Import Necessary Actions and Types ---
+import { formatDate } from '@/lib/utils/utils';
 import { getPatientImmunizations, Immunization } from '@/lib/immunizations/getPatientImmunizations';
-import { formatDate } from '@/lib/utils/utils'; // Reusing your utility function
 
 interface ImmunizationHistoryTableProps {
     patientUuid: string;
-    refreshKey: number; // To force refresh after a new immunization is documented
+    refreshKey: number;
 }
 
-/**
- * Displays the patient's chronological history of administered vaccines.
- */
 export default function ImmunizationHistoryTable({ patientUuid, refreshKey }: ImmunizationHistoryTableProps) {
     const [immunizations, setImmunizations] = useState<Immunization[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // --- Data Fetching ---
     const fetchImmunizations = useCallback(async () => {
         setIsLoading(true);
         setError(null);
         try {
             const data = await getPatientImmunizations(patientUuid);
-            // Sort chronologically (most recent first)
             data.sort((a, b) => new Date(b.administrationDate).getTime() - new Date(a.administrationDate).getTime());
             setImmunizations(data);
         } catch (e) {
             console.error("Error fetching immunizations:", e);
-            setError("Failed to load patient immunization history. Check OpenMRS encounter/obs configuration.");
+            setError("Failed to load patient immunization history. Check OpenMRS FHIR R4 Immunization configuration.");
             setImmunizations([]);
         } finally {
             setIsLoading(false);
         }
     }, [patientUuid]);
 
-    // Re-fetch data whenever the refreshKey changes
     useEffect(() => {
-        fetchImmunizations();
-    }, [fetchImmunizations, refreshKey]);
+        if (patientUuid) {
+            fetchImmunizations();
+        }
+    }, [fetchImmunizations, refreshKey, patientUuid]);
 
-    // --- Utility Functions for Display ---
     const getStatusStyles = () => {
-        // Since we only track 'administered' here, the status is generally complete/given
-        return { icon: <CheckCircle className="w-4 h-4 mr-1 text-green-700" />, textClass: 'bg-green-100 text-green-800' };
+        return { icon: <CheckCircle className="w-3.5 h-3.5 mr-1.5 text-green-600" />, textClass: 'bg-green-50 text-green-700' };
     };
-
 
     if (error) {
         return (
-            <div className="text-center p-8 border border-red-300 bg-red-50 text-red-700 rounded-lg flex items-center justify-center">
-                <AlertTriangle className="w-6 h-6 mr-3" />
+            <div className="text-center p-4 border border-red-200 bg-red-50 text-red-600 rounded-lg flex items-center justify-center text-sm">
+                <AlertTriangle className="w-4 h-4 mr-2" />
                 {error}
             </div>
         );
@@ -61,24 +52,22 @@ export default function ImmunizationHistoryTable({ patientUuid, refreshKey }: Im
 
     if (isLoading && immunizations.length === 0) {
         return (
-            <div className="text-center p-12 text-blue-600">
-                <Loader2 className="w-8 h-8 mx-auto animate-spin mb-3" />
-                Loading immunization history...
+            <div className="text-center p-6 text-gray-600">
+                <Loader2 className="w-5 h-5 mx-auto animate-spin mb-2" />
+                <div className="text-sm">Loading immunization history...</div>
             </div>
         );
     }
 
-    // --- Component JSX ---
     return (
-        <div className="bg-white shadow-xl rounded-xl p-6">
-
-            <div className="flex items-center text-xl font-bold text-gray-700 mb-4 border-b pb-2">
-                <Syringe className="w-6 h-6 mr-2 text-blue-600" />
+        <div className="bg-white border border-gray-200 rounded-lg p-4">
+            <div className="flex items-center text-base font-semibold text-gray-900 mb-3">
+                <Syringe className="w-4 h-4 mr-2 text-blue-600" />
                 Administered Vaccines ({immunizations.length})
             </div>
 
             {immunizations.length === 0 ? (
-                <div className="text-center p-8 text-gray-500 border border-dashed rounded-lg">
+                <div className="text-center p-4 text-gray-500 text-sm border border-dashed border-gray-300 rounded-lg">
                     No immunization records found for this patient.
                 </div>
             ) : (
@@ -86,44 +75,34 @@ export default function ImmunizationHistoryTable({ patientUuid, refreshKey }: Im
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vaccine</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Administered</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dose / Sequence</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Recorded By</th>
-                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Vaccine</th>
+                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Date</th>
+                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Dose</th>
+                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Recorded By</th>
+                                <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wide">Status</th>
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
                             {immunizations.map((imm) => {
                                 const { icon, textClass } = getStatusStyles();
                                 return (
-                                    <tr key={imm.uuid} className="hover:bg-blue-50 transition duration-100">
-
-                                        {/* Vaccine Name */}
-                                        <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                                    <tr key={imm.uuid} className="hover:bg-gray-50">
+                                        <td className="px-4 py-3 text-sm text-gray-900 font-medium">
                                             {imm.vaccineConcept.display}
                                         </td>
-
-                                        {/* Administration Date */}
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                                            <Clock className="w-4 h-4 mr-1 inline-block text-gray-500" />
+                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                                            <Clock className="w-3.5 h-3.5 mr-1.5 inline-block text-gray-400" />
                                             {formatDate(imm.administrationDate)}
                                         </td>
-
-                                        {/* Dose Sequence */}
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                                            {imm.doseSequence || 'Not Specified'}
+                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                                            {imm.doseSequence !== null && imm.doseSequence !== undefined ? `Dose ${imm.doseSequence}` : 'Not Specified'}
                                         </td>
-
-                                        {/* Provider */}
-                                        <td className="px-6 py-4 text-sm text-gray-700">
+                                        <td className="px-4 py-3 text-sm text-gray-600">
                                             {imm.provider?.display || 'N/A'}
                                         </td>
-
-                                        {/* Status */}
-                                        <td className="px-6 py-4 text-center whitespace-nowrap">
+                                        <td className="px-4 py-3 text-center whitespace-nowrap">
                                             <span
-                                                className={`inline-flex px-3 py-1 text-xs leading-5 rounded-full font-semibold ${textClass}`}
+                                                className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded ${textClass}`}
                                             >
                                                 {icon}
                                                 Administered

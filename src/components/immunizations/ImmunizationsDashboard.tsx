@@ -1,20 +1,15 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Syringe, Loader2, AlertCircle } from 'lucide-react';
+import { Plus, Syringe, Loader2, AlertCircle, Calendar, Package, Factory, Hash } from 'lucide-react';
 
-// --- Import all built components and actions ---
+
 import ImmunizationHistoryTable from '@/components/immunizations/ImmunizationHistoryTable';
-import { 
-    getVaccineConceptOptions, 
-    VaccineConceptOption 
-} from '@/lib/immunizations/getVaccineConceptOptions';
-import { 
-    submitPatientImmunization, 
-    NewImmunizationSubmissionData 
-} from '@/lib/immunizations/submitPatientImmunization';
-// import { getProviderUuid } from '@/lib/config/provider';
+
 import { getPatientLocations } from '@/lib/location/getPatientLocations';
+import { getVaccineConceptOptions, ConceptReference as VaccineConceptOption } from '@/lib/immunizations/getVaccineConceptOptions';
+import { usePatientDashboard } from '../context/patient-dashboard-context';
+import { NewImmunizationSubmissionData, submitPatientImmunization } from '@/lib/immunizations/submitPatientImmunization';
 
 
 interface ImmunizationsDashboardProps {
@@ -22,92 +17,126 @@ interface ImmunizationsDashboardProps {
     patientName: string;
 }
 
-/**
- * The main container component for the patient's Immunizations History.
- * It manages the display of the history table and the documentation form.
- */
 export default function ImmunizationsDashboard({ patientUuid }: ImmunizationsDashboardProps) {
     
-    // State to force refresh the table
+    // 🔑 NEW: Retrieve Active Visit Context from Provider
+    const { activeVisit, onActionComplete } = usePatientDashboard();
+
+    // --- State for Workflow Control and UI ---
     const [refreshKey, setRefreshKey] = useState(0); 
     const [isFormVisible, setIsFormVisible] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isLoadingConcepts, setIsLoadingConcepts] = useState(false);
+    const [isLoadingInitialData, setIsLoadingInitialData] = useState(false);
     
-    // Data states for the form
+    // --- Data States for Form Context ---
     const [vaccineConcepts, setVaccineConcepts] = useState<VaccineConceptOption[]>([]);
-    const [providerUuid, setProviderUuid] = useState<string | null>(null);
     const [locationOptions, setLocationOptions] = useState<Array<{ uuid: string; display: string }>>([]);
+    
+    // 🔑 CHANGE: Use NEXT_PUBLIC_DEFAULT_PROVIDER_UUID from the environment
+    const [providerUuid] = useState<string | null>(process.env.NEXT_PUBLIC_DEFAULT_PROVIDER_UUID || null); 
 
-    // Form Data State
+    // --- Form Data State ---
     const [formData, setFormData] = useState({
         vaccineConceptUuid: '',
-        administrationDate: new Date().toISOString().split('T')[0], // Default to today
+        vaccineDisplay: '', 
+        occurrenceDateTime: new Date().toISOString().substring(0, 16), 
         locationUuid: '',
+        lotNumber: '', 
+        expirationDate: '', 
+        manufacturer: '', 
+        doseNumber: 1, 
     });
 
-    // --- Initial Data Fetching ---
-    // const providerId = process.env.NEXT_PUBLIC_PROVIDER_UUID!;
-
+    // --- Initial Data Fetching (Concepts and Locations ONLY) ---
     const fetchInitialData = useCallback(async () => {
-        setIsLoadingConcepts(true);
+        setIsLoadingInitialData(true);
         try {
-            // Fetch necessary reference data concurrently
+            // Fetch concepts and locations concurrently
             const [concepts, locations] = await Promise.all([
                 getVaccineConceptOptions(),
-                getPatientLocations(patientUuid), // Available locations for administration
+                getPatientLocations(patientUuid), 
             ]);
             
             setVaccineConcepts(concepts);
-            setProviderUuid(process.env.NEXT_PUBLIC_PROVIDER_UUID || null);
             setLocationOptions(locations.map(loc => ({ uuid: loc.uuid, display: loc.display })));
             
-            // Set default location if available
-            if (locations.length > 0) {
-                setFormData(prev => ({ ...prev, locationUuid: locations[0].uuid }));
+            // Set default location based on context or available options
+            const defaultLocationUuid = activeVisit?.location?.uuid || locations[0]?.uuid || '';
+            if (defaultLocationUuid) {
+                 setFormData(prev => ({ ...prev, locationUuid: defaultLocationUuid }));
             }
             
         } catch (error) {
             console.error("Failed to load initial data for immunizations form:", error);
-            // Optionally set an error state here
         } finally {
-            setIsLoadingConcepts(false);
+            setIsLoadingInitialData(false);
         }
-    }, [patientUuid]);
+    }, [patientUuid, activeVisit?.location?.uuid]); // Depend on activeVisit location
 
     useEffect(() => {
         fetchInitialData();
     }, [fetchInitialData]);
+    
+    // --- Helper to update form data, especially display field ---
+    const handleVaccineChange = (uuid: string) => {
+        const selectedConcept = vaccineConcepts.find(c => c.uuid === uuid);
+        setFormData(prev => ({ 
+            ...prev, 
+            vaccineConceptUuid: uuid, 
+            vaccineDisplay: selectedConcept ? selectedConcept.display : '' 
+        }));
+    };
+
 
     // --- Form Submission ---
     const handleFormSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         
-        if (!formData.vaccineConceptUuid || !formData.locationUuid || !providerUuid) {
-            alert('Missing critical information: Vaccine, Location, or Provider ID.');
+        // 🔑 Use activeVisit directly from context, which holds the visitUuid
+        if (!formData.vaccineConceptUuid || !formData.locationUuid || !providerUuid || !activeVisit) {
+            alert('Missing critical context: Vaccine, Location, Provider ID, or Active Visit is missing. Cannot proceed.');
             return;
         }
 
         setIsSubmitting(true);
 
+        const administrationDateTime = new Date(formData.occurrenceDateTime).toISOString();
+
         const payload: NewImmunizationSubmissionData = {
             patientUuid: patientUuid,
             vaccineConceptUuid: formData.vaccineConceptUuid,
-            administrationDate: formData.administrationDate,
-            locationUuid: formData.locationUuid,
-            providerUuid: providerUuid,
+            vaccineDisplay: formData.vaccineDisplay,
+            occurrenceDateTime: administrationDateTime, 
+            lotNumber: formData.lotNumber,
+            expirationDate: formData.expirationDate, 
+            manufacturer: formData.manufacturer,
+            doseNumber: formData.doseNumber,
+            
+            // Context from the active visit
+            visitUuid: activeVisit.uuid, // 🔑 Essential: Taken from the Context's activeVisit
+            locationUuid: formData.locationUuid, 
+            practitionerUuid: providerUuid,
         };
 
         try {
             await submitPatientImmunization(payload);
             alert(`Vaccine documented successfully.`);
-            setRefreshKey(prevKey => prevKey + 1); // Refresh the list
-            setIsFormVisible(false); // Hide the form
-            // Reset form data (except location, which might remain the default)
+            setRefreshKey(prevKey => prevKey + 1); 
+            setIsFormVisible(false); 
+            
+            // Optionally notify the dashboard that an action occurred
+            onActionComplete(); 
+            
+            // Reset form data 
             setFormData(prev => ({ 
                 ...prev, 
                 vaccineConceptUuid: '',
-                administrationDate: new Date().toISOString().split('T')[0],
+                vaccineDisplay: '',
+                occurrenceDateTime: new Date().toISOString().substring(0, 16),
+                lotNumber: '',
+                expirationDate: '',
+                manufacturer: '',
+                doseNumber: 1,
             }));
         } catch (error: any) {
             console.error('Immunization documentation failed:', error);
@@ -117,6 +146,11 @@ export default function ImmunizationsDashboard({ patientUuid }: ImmunizationsDas
         }
     };
     
+    // Check if the necessary visit context for submission is present
+    const canSubmit = activeVisit && formData.vaccineConceptUuid && providerUuid;
+    const activeVisitFound = !!activeVisit;
+
+
     // --- New Immunization Form JSX (Inline Component) ---
     const NewImmunizationForm = () => (
         <div className="bg-white border border-green-200 rounded-lg p-6 shadow-md mb-8">
@@ -124,101 +158,164 @@ export default function ImmunizationsDashboard({ patientUuid }: ImmunizationsDas
                 <Syringe className="w-5 h-5 mr-2" /> Document New Administration
             </h3>
             
-            {isLoadingConcepts ? (
+            {isLoadingInitialData ? (
                 <div className="text-center p-4 text-green-600">
                     <Loader2 className="w-5 h-5 mx-auto animate-spin" />
-                    Loading vaccine concepts...
+                    Loading required form data...
                 </div>
             ) : (
-                <form onSubmit={handleFormSubmit} className="space-y-4">
-                    
-                    {/* Provider ID Warning */}
+                <>
+                    {/* Critical Context Warnings */}
                     {!providerUuid && (
-                        <div className="p-3 bg-red-50 border border-red-200 text-red-800 text-sm rounded flex items-center">
+                        <div className="p-3 bg-red-50 border border-red-200 text-red-800 text-sm rounded flex items-center mb-4">
                             <AlertCircle className="w-4 h-4 mr-2" />
-                            Error: Current user&apos;s provider UUID is missing. Cannot document immunization.
+                            Error: Current user&apos;s **Provider UUID** is missing. Cannot record immunization.
                         </div>
                     )}
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {/* Vaccine Concept */}
-                        <div className="md:col-span-1">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Vaccine Administered</label>
-                            <select
-                                value={formData.vaccineConceptUuid}
-                                onChange={(e) => setFormData({ ...formData, vaccineConceptUuid: e.target.value })}
-                                className="w-full border border-gray-300 rounded-lg p-2 focus:ring-green-500 focus:border-green-500"
-                                required
-                                disabled={isSubmitting || !providerUuid}
+                    {!activeVisitFound && (
+                        <div className="p-3 bg-red-50 border border-red-200 text-red-800 text-sm rounded flex items-center mb-4">
+                            <AlertCircle className="w-4 h-4 mr-2" />
+                            **Error: No Active Visit found.** You must start a visit before recording a structured clinical event like an immunization.
+                        </div>
+                    )}
+
+                    <form onSubmit={handleFormSubmit} className="space-y-4">
+                        
+                        {/* Row 1: Core Fields (Vaccine, Date, Location) */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {/* Vaccine Concept */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Vaccine Administered *</label>
+                                <select
+                                    value={formData.vaccineConceptUuid}
+                                    onChange={(e) => handleVaccineChange(e.target.value)}
+                                    className="w-full border border-gray-300 rounded-lg p-2 focus:ring-green-500 focus:border-green-500"
+                                    required
+                                    disabled={isSubmitting || !activeVisitFound || !providerUuid}
+                                >
+                                    <option value="">Select Vaccine Type</option>
+                                    {vaccineConcepts.map(opt => (
+                                        <option key={opt.uuid} value={opt.uuid}>{opt.display}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Administration Date & Time */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Date & Time Administered *</label>
+                                <input
+                                    type="datetime-local"
+                                    value={formData.occurrenceDateTime}
+                                    onChange={(e) => setFormData({ ...formData, occurrenceDateTime: e.target.value })}
+                                    className="w-full border border-gray-300 rounded-lg p-2 focus:ring-green-500 focus:border-green-500"
+                                    required
+                                    max={new Date().toISOString().substring(0, 16)} 
+                                    disabled={isSubmitting || !activeVisitFound || !providerUuid}
+                                />
+                            </div>
+
+                            {/* Location */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Administration Location *</label>
+                                <select
+                                    value={formData.locationUuid}
+                                    onChange={(e) => setFormData({ ...formData, locationUuid: e.target.value })}
+                                    className="w-full border border-gray-300 rounded-lg p-2 focus:ring-green-500 focus:border-green-500"
+                                    required
+                                    disabled={isSubmitting || !activeVisitFound || !providerUuid}
+                                >
+                                    <option value="">Select Location</option>
+                                    {locationOptions.map(loc => (
+                                        <option key={loc.uuid} value={loc.uuid}>{loc.display}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+                        
+                        {/* Row 2: Additional FHIR/Logistics Fields */}
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-2 border-t pt-4">
+                            
+                            {/* Lot Number */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center"><Package className="w-4 h-4 mr-1 text-gray-500"/> Lot Number</label>
+                                <input
+                                    type="text"
+                                    placeholder="Batch/Lot ID"
+                                    value={formData.lotNumber}
+                                    onChange={(e) => setFormData({ ...formData, lotNumber: e.target.value })}
+                                    className="w-full border border-gray-300 rounded-lg p-2 focus:ring-green-500 focus:border-green-500"
+                                    disabled={isSubmitting || !activeVisitFound || !providerUuid}
+                                />
+                            </div>
+                            
+                            {/* Expiration Date */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center"><Calendar className="w-4 h-4 mr-1 text-gray-500"/> Expiry Date</label>
+                                <input
+                                    type="date"
+                                    value={formData.expirationDate}
+                                    onChange={(e) => setFormData({ ...formData, expirationDate: e.target.value })}
+                                    className="w-full border border-gray-300 rounded-lg p-2 focus:ring-green-500 focus:border-green-500"
+                                    disabled={isSubmitting || !activeVisitFound || !providerUuid}
+                                />
+                            </div>
+
+                            {/* Manufacturer */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center"><Factory className="w-4 h-4 mr-1 text-gray-500"/> Manufacturer</label>
+                                <input
+                                    type="text"
+                                    placeholder="e.g., Pfizer, Moderna"
+                                    value={formData.manufacturer}
+                                    onChange={(e) => setFormData({ ...formData, manufacturer: e.target.value })}
+                                    className="w-full border border-gray-300 rounded-lg p-2 focus:ring-green-500 focus:border-green-500"
+                                    disabled={isSubmitting || !activeVisitFound || !providerUuid}
+                                />
+                            </div>
+                            
+                            {/* Dose Number */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center"><Hash className="w-4 h-4 mr-1 text-gray-500"/> Dose #</label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    placeholder="1, 2, 3..."
+                                    value={formData.doseNumber}
+                                    onChange={(e) => setFormData({ ...formData, doseNumber: parseInt(e.target.value) || 1 })}
+                                    className="w-full border border-gray-300 rounded-lg p-2 focus:ring-green-500 focus:border-green-500"
+                                    disabled={isSubmitting || !activeVisitFound || !providerUuid}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Submission Button */}
+                        <div className="flex justify-end space-x-3 pt-4">
+                            <button
+                                type="button"
+                                onClick={() => setIsFormVisible(false)}
+                                className="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300"
+                                disabled={isSubmitting}
                             >
-                                <option value="">Select Vaccine Type</option>
-                                {vaccineConcepts.map(opt => (
-                                    <option key={opt.uuid} value={opt.uuid}>{opt.display}</option>
-                                ))}
-                            </select>
-                            {vaccineConcepts.length === 0 && (
-                                <p className="mt-1 text-xs text-red-500">No vaccine concepts available.</p>
-                            )}
-                        </div>
-
-                        {/* Administration Date */}
-                        <div className="md:col-span-1">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Date Administered</label>
-                            <input
-                                type="date"
-                                value={formData.administrationDate}
-                                onChange={(e) => setFormData({ ...formData, administrationDate: e.target.value })}
-                                className="w-full border border-gray-300 rounded-lg p-2 focus:ring-green-500 focus:border-green-500"
-                                required
-                                max={new Date().toISOString().split('T')[0]} // Cannot be a future date
-                                disabled={isSubmitting || !providerUuid}
-                            />
-                        </div>
-
-                        {/* Location */}
-                        <div className="md:col-span-1">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Administration Location</label>
-                            <select
-                                value={formData.locationUuid}
-                                onChange={(e) => setFormData({ ...formData, locationUuid: e.target.value })}
-                                className="w-full border border-gray-300 rounded-lg p-2 focus:ring-green-500 focus:border-green-500"
-                                required
-                                disabled={isSubmitting || !providerUuid}
+                                Cancel
+                            </button>
+                            <button
+                                type="submit"
+                                className="px-6 py-2 text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:bg-green-300 flex items-center"
+                                // Disabled if 'canSubmit' is false
+                                disabled={isSubmitting || !canSubmit}
                             >
-                                <option value="">Select Location</option>
-                                {locationOptions.map(loc => (
-                                    <option key={loc.uuid} value={loc.uuid}>{loc.display}</option>
-                                ))}
-                            </select>
+                                {isSubmitting ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                        Saving...
+                                    </>
+                                ) : (
+                                    `Record Immunization`
+                                )}
+                            </button>
                         </div>
-                    </div>
-
-                    {/* Submission Button */}
-                    <div className="flex justify-end space-x-3 pt-2">
-                        <button
-                            type="button"
-                            onClick={() => setIsFormVisible(false)}
-                            className="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300"
-                            disabled={isSubmitting}
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            className="px-6 py-2 text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:bg-green-300 flex items-center"
-                            disabled={isSubmitting || !formData.vaccineConceptUuid || !providerUuid}
-                        >
-                            {isSubmitting ? (
-                                <>
-                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                    Saving...
-                                </>
-                            ) : (
-                                `Record Immunization`
-                            )}
-                        </button>
-                    </div>
-                </form>
+                    </form>
+                </>
             )}
         </div>
     );
@@ -238,6 +335,7 @@ export default function ImmunizationsDashboard({ patientUuid }: ImmunizationsDas
                 <button
                     onClick={() => setIsFormVisible(prev => !prev)}
                     className="flex items-center px-4 py-2 bg-green-600 text-white font-medium rounded-lg shadow-md hover:bg-green-700 transition duration-150"
+                    disabled={isLoadingInitialData} 
                 >
                     <Plus className="w-5 h-5 mr-2" />
                     {isFormVisible ? 'Hide Form' : 'Document New Vaccine'}
