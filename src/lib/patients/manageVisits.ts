@@ -1,6 +1,7 @@
 'use server';
 
 import { redirectToLogin,getAuthHeaders } from '../auth/auth';
+import { Encounter } from '../visits/getVisitEncounters';
 
 export interface Visit {
   uuid: string;
@@ -11,6 +12,7 @@ export interface Visit {
   location?: { uuid: string; display: string };
   voided?: boolean;
   voidReason?: string;
+  encounters?: Encounter[];
 }
 
 /**
