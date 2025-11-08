@@ -1,95 +1,99 @@
 'use server';
 
-import { getAuthHeaders, redirectToLogin } from '@/lib/auth/auth';
+import { getAuthHeaders } from '@/lib/auth/auth';
+import { getEncounterTypeUuid } from '../encounters/encounterType';
+import { getSessionLocation } from '../location/location';
 
-// --- Interface for the payload sent to the API for updates ---
-export interface OrderUpdateData {
-    patientUuid: string;
-    existingOrderUuid: string; // The UUID of the order being modified
-    conceptUuid: string;       // The concept of the original order (required by OpenMRS for updates)
-    orderType: 'testorder' | 'radiologyorder' | 'procedureorder' | 'generalorder';
-    action: 'DISCONTINUE' | 'REVISE' | 'RENEW'; // The action to perform
-    
-    // Required context for the OpenMRS update mechanism
-    previousOrderUuid: string; // OpenMRS requires the UUID of the order being acted upon
-    encounterUuid: string;     // UUID of the current encounter
-    
-    // Optional details
-    reasonText?: string; 
-}
-
-// --- Helper for API Error Checking (Matching your structure) ---
-async function handleApiError(response: Response, source: string) {
-    if (response.status === 401 || response.status === 403) {
-        redirectToLogin();
-        throw new Error(`Authentication failed: HTTP ${response.status}. Redirecting.`);
-    }
-
-    const errorText = await response.text();
-    console.error(`OpenMRS API Error [${source}] ${response.status}: ${errorText.substring(0, 100)}`);
-    throw new Error(`Failed to update order: HTTP ${response.status}.`);
+/**
+ * Data required to discontinue an existing clinical order.
+ */
+export interface DiscontinueOrderSubmissionData {
+  patientUuid: string;
+  orderUuid: string; // The UUID of the existing order to discontinue
+  conceptUuid: string; // The concept UUID of the original order
+  orderType: 'testorder' | 'drugorder'; // The type of the original order
+  dateStopped?: string; // Optional date/time the order was stopped
 }
 
 /**
- * Updates an existing non-medication clinical order (e.g., Discontinue, Revise, or Renew) 
- * via a POST request to the OpenMRS /order endpoint.
- *
- * @param updateData The structured data for the order update.
- * @returns A promise that resolves when the order is successfully updated.
+ * Submits a clinical order action to DISCONTINUE an existing order.
+ * This is done by creating an encounter that contains the 'DISCONTINUE' order action.
  */
-export async function updateClinicalOrder(updateData: OrderUpdateData): Promise<void> {
-    const { 
-        patientUuid, conceptUuid, orderType, 
-        action, previousOrderUuid, encounterUuid, reasonText 
-    } = updateData;
+export async function discontinueClinicalOrder(
+  submissionData: DiscontinueOrderSubmissionData,
+): Promise<void> {
+  const {
+    patientUuid,
+    orderUuid,
+    conceptUuid,
+    orderType,
+    dateStopped,
+  } = submissionData;
 
-    if (!patientUuid || !conceptUuid || !orderType || !encounterUuid || !previousOrderUuid) {
-        throw new Error("Missing required fields for order update.");
-    }
+  // --- Validate required fields ---
+  if (!patientUuid || !orderUuid || !conceptUuid || !orderType) {
+    throw new Error('Missing required fields for order discontinuation.');
+  }
 
-    let headers: Record<string, string>;
-    try {
-        headers = await getAuthHeaders();
-    } catch {
-        redirectToLogin();
-        throw new Error("Authentication failed during order update.");
-    }
+  // Use the same provider logic as your submitNewClinicalOrder
+  const providerUuid = process.env.NEXT_PUBLIC_DEFAULT_PROVIDER_UUID;
+  if (!providerUuid) {
+    throw new Error(
+      'Environment variable NEXT_PUBLIC_DEFAULT_PROVIDER_UUID is missing.',
+    );
+  }
 
-    // --- Construct the OpenMRS Order Update Payload ---
-    // Note: To Discontinue/Revise, OpenMRS creates a *new* order record 
-    // that references the 'previousOrder', effectively closing the old one.
+  try {
+    // Fetch helper data
+    const [headers, encounterTypeUuid, sessionLocation] = await Promise.all([
+      getAuthHeaders(),
+      getEncounterTypeUuid('Order'), // Still uses the 'Order' encounter type
+      getSessionLocation(),
+    ]);
+
+    // Construct encounter payload (OpenMRS expected structure)
     const payload = {
-        type: orderType, 
-        patient: patientUuid,
-        concept: conceptUuid,
-        encounter: encounterUuid,
-        action: action, 
-        previousOrder: previousOrderUuid, // Key field linking to the order being modified
-        orderReasonText: reasonText || null,
-
-        // For RENEW or REVISE actions, you might need to carry over or change fields
-        // e.g., if REVISE, you'd include the revised instructions/urgency here.
+      encounterType: encounterTypeUuid,
+      patient: patientUuid,
+      // Use dateStopped or current time for the encounter datetime
+      encounterDatetime: dateStopped || new Date().toISOString(), 
+      location: sessionLocation?.uuid,
+      orders: [
+        {
+          type: orderType,
+          action: 'DISCONTINUE', // Key difference: The action is DISCONTINUE
+          previousOrder: orderUuid, // Key difference: Must link to the order being stopped
+          concept: conceptUuid, // Still required, must match the original order's concept
+          orderer: providerUuid,
+          careSetting: 'OUTPATIENT', // Assuming the same care setting
+        },
+      ],
     };
 
-    const url = `${process.env.OPENMRS_API_URL}/order`;
+    const url = `${process.env.OPENMRS_API_URL}/encounter`;
 
-    try {
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                ...headers,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(payload),
-        });
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        ...headers,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
 
-        if (!response.ok) {
-            await handleApiError(response, `updateClinicalOrder: ${action}`);
-        }
-
-        // Successfully updated (response status 201 Created)
-    } catch (error) {
-        console.error("Final network error updating order:", error);
-        throw new Error("Network or unexpected error during order update.");
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('OpenMRS Discontinue Submission Error:', errorText);
+      throw new Error(
+        `Order discontinuation failed: HTTP ${response.status}`,
+      );
     }
+
+    console.log('✅ Discontinue order encounter submitted successfully.');
+  } catch (error) {
+    console.error('Final network error discontinuing order:', error);
+    throw new Error(
+      'Network or unexpected error during order discontinuation.',
+    );
+  }
 }
