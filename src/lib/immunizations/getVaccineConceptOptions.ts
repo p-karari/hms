@@ -1,12 +1,12 @@
-'use server';
+'use server'
 
 import { getAuthHeaders, redirectToLogin } from '@/lib/auth/auth';
-import { ConceptReference } from '@/lib/medications/getPatientMedicationOrders'; // Reusing ConceptReference type
+export type ConceptReference = { uuid: string; display: string; };
 
-// Type definition for the vaccine concept options
 export type VaccineConceptOption = ConceptReference;
 
-// --- Helper for API Error Checking ---
+const VACCINE_CONCEPT_CIEL_REF = "CIEL:984"; 
+
 async function handleApiError(response: Response, source: string) {
     if (response.status === 401 || response.status === 403) {
         redirectToLogin();
@@ -18,14 +18,7 @@ async function handleApiError(response: Response, source: string) {
     throw new Error(`Failed to fetch vaccine concept data: HTTP ${response.status}.`);
 }
 
-/**
- * Fetches a list of standardized vaccine concepts from a configured OpenMRS Concept Set.
- * This list is used to populate the dropdown in the 'Document New Immunization' form.
- *
- * NOTE: This relies on a Concept Set being configured in OpenMRS containing all available vaccines.
- *
- * @returns A promise that resolves to an array of VaccineConceptOption objects.
- */
+
 export async function getVaccineConceptOptions(): Promise<VaccineConceptOption[]> {
     let headers: Record<string, string>;
     try {
@@ -35,49 +28,28 @@ export async function getVaccineConceptOptions(): Promise<VaccineConceptOption[]
         return [];
     }
     
-    // --- Configuration: Define the name of the Vaccine Concept Set ---
-    // This name must match the display name of your master vaccine concept set in OpenMRS.
-    const VACCINE_CONCEPT_SET_NAME = "ALL AVAILABLE VACCINES"; 
     const apiBaseUrl = process.env.OPENMRS_API_URL;
+    
+    const fetchUrl = `${apiBaseUrl}/concept?references=${VACCINE_CONCEPT_CIEL_REF}&v=custom:(uuid,display,answers:(uuid,display))`;
 
     try {
-        // Step 1: Search for the UUID of the Parent Concept Set using its display name.
-        const searchUrl = `${apiBaseUrl}/concept?q=${encodeURIComponent(VACCINE_CONCEPT_SET_NAME)}&v=custom:(uuid)`;
+        const response = await fetch(fetchUrl, { headers, cache: 'force-cache' });
         
-        const searchResponse = await fetch(searchUrl, { headers, cache: 'force-cache' });
-        
-        if (!searchResponse.ok) {
-            await handleApiError(searchResponse, `Search for Vaccine Concept Set: ${VACCINE_CONCEPT_SET_NAME}`);
+        if (!response.ok) {
+            await handleApiError(response, `Fetch Vaccine Concept Answers: ${VACCINE_CONCEPT_CIEL_REF}`);
             return [];
         }
 
-        const searchData: { results: Array<{ uuid: string }> } = await searchResponse.json();
-        const parentConcept = searchData.results.find(c => c.uuid.length > 0); 
+        const data: { results: Array<{ uuid: string; display: string; answers: VaccineConceptOption[] }> } = await response.json();
         
-        if (!parentConcept) {
-            console.warn(`Vaccine Concept Set not found for name: ${VACCINE_CONCEPT_SET_NAME}.`);
+        const conceptSet = data.results.find(c => c.answers && c.answers.length > 0); 
+        
+        if (!conceptSet) {
+            console.warn(`Vaccine concept set (CIEL:984) found but contained no answers.`);
             return [];
         }
         
-        // Step 2: Fetch the set members (the actual vaccine names) using the found UUID.
-        const fetchMembersUrl = `${apiBaseUrl}/concept/${parentConcept.uuid}?v=custom:(setMembers:(uuid,display))`;
-        
-        const membersResponse = await fetch(fetchMembersUrl, { headers, cache: 'force-cache' });
-
-        if (!membersResponse.ok) {
-            await handleApiError(membersResponse, `Fetch Vaccine Concept Members`);
-            return [];
-        }
-
-        const membersData: any = await membersResponse.json();
-        
-        // Map the setMembers to the required VaccineConceptOption structure
-        const results: VaccineConceptOption[] = (membersData.setMembers || []).map((item: any) => ({
-            uuid: item.uuid,
-            display: item.display
-        }));
-
-        return results;
+        return conceptSet.answers.filter(item => item.uuid && item.display);
 
     } catch (error) {
         console.error('Final error fetching vaccine concept options:', error);
