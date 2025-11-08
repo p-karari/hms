@@ -52,7 +52,7 @@ const ConditionsPage: React.FC = () => {
   }, []);
 
   // const hasKnownAllergies = patientDetails?.hasAllergies || false;
-  const patientName = patientDetails?.display || 'Patient';
+  // const patientName = patientDetails?.display || 'Patient';
 
   return (
     <PatientDashboardProvider activeVisit={activeVisit} onActionComplete={handleActionComplete}>
@@ -96,8 +96,7 @@ const ConditionsPage: React.FC = () => {
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <ConditionsDashboard
             patientUuid={patientUuid}
-            patientName={patientName}
-            // hasKnownAllergies={hasKnownAllergies}
+
           />
         </div>
       </div>
