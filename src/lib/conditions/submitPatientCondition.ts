@@ -1,145 +1,88 @@
 'use server';
 
-import { getAuthHeaders, redirectToLogin } from '@/lib/auth/auth'; 
+import { getAuthHeaders, redirectToLogin } from '@/lib/auth/auth';
 
 // --- Interface for New Condition Submission ---
+// NOTE: recorderUuid is used in the client, but it holds the Encounter UUID.
 export interface NewConditionSubmissionData {
-    patientUuid: string;
-    conditionConceptUuid: string; // UUID of the diagnosis concept
-    clinicalStatus: 'ACTIVE' | 'INACTIVE' | 'RESOLVED';
-    verificationStatus: 'CONFIRMED' | 'UNCONFIRMED' | 'PROVISIONAL';
-    onsetDate: string; // Required date of onset (ISO format)
-    encounterUuid: string | null; // Optional: Link to the encounter where it was documented
-    comment?: string; 
+  patientUuid: string;
+  conditionConceptUuid: string; // UUID of the diagnosis concept
+  conditionDisplay: string;     // Display text of the condition (Used for display only)
+  clinicalStatus: 'active' | 'inactive';
+  onsetDate: string;            // ISO format
+  recorderUuid: string;         // Holds the Encounter UUID from the client component
 }
 
-// --- Interface for Updating an Existing Condition ---
+// --- Interface for Updating Condition ---
 export interface UpdateConditionData {
-    conditionUuid: string;
-    clinicalStatus: 'ACTIVE' | 'INACTIVE' | 'RESOLVED';
-    endDate?: string; // Required if resolving
+  conditionUuid: string;
+  clinicalStatus: 'active' | 'inactive' | 'resolved';
+  endDate?: string;
 }
 
-// --- Helper for API Error Checking ---
+// --- Helper ---
 async function handleApiError(response: Response, source: string) {
-    if (response.status === 401 || response.status === 403) {
-        redirectToLogin();
-        throw new Error(`Authentication failed: HTTP ${response.status}. Redirecting.`);
-    }
-
-    const errorText = await response.text();
-    console.error(`OpenMRS API Error [${source}] ${response.status}: ${errorText.substring(0, 100)}`);
-    throw new Error(`Failed to perform condition action: HTTP ${response.status}.`);
+  if (response.status === 401 || response.status === 403) {
+    redirectToLogin();
+    throw new Error(`Authentication failed: HTTP ${response.status}`);
+  }
+  const text = await response.text();
+  console.error(`OpenMRS API Error [${source}] ${response.status}: ${text.substring(0, 100)}`);
+  throw new Error(`Failed: HTTP ${response.status}`);
 }
 
-/**
- * Submits a new patient condition record to the OpenMRS Problem List.
- *
- * @param submissionData The structured data payload for the new condition.
- * @returns A promise that resolves when the condition is successfully created.
- */
-export async function createPatientCondition(submissionData: NewConditionSubmissionData): Promise<void> {
-    const { 
-        patientUuid, 
-        conditionConceptUuid, 
-        clinicalStatus, 
-        verificationStatus, 
-        onsetDate,
-        encounterUuid,
-        comment
-    } = submissionData;
+// --- Create Condition ---
+export async function createPatientCondition(data: NewConditionSubmissionData) {
+  const headers = await getAuthHeaders().catch(() => {
+    redirectToLogin();
+    throw new Error("Authentication failed during condition creation.");
+  });
 
-    let headers: Record<string, string>;
-    try {
-        headers = await getAuthHeaders();
-    } catch {
-        redirectToLogin();
-        throw new Error("Authentication failed during condition creation.");
-    }
-
-    // --- Construct the OpenMRS Condition Payload ---
-    const payload = {
-        patient: patientUuid,
-        condition: {
-            uuid: conditionConceptUuid, // The diagnosis concept
-        },
-        clinicalStatus: clinicalStatus,
-        verificationStatus: verificationStatus,
-        onsetDate: onsetDate,
-        encounter: encounterUuid,
-        comment: comment,
-        // The API automatically sets recordedDate
-    };
-
-    const url = `${process.env.OPENMRS_API_URL}/condition`;
-
-    try {
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                ...headers,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(payload),
-        });
-
-        if (!response.ok) {
-            await handleApiError(response, "createPatientCondition");
-        }
-    } catch (error) {
-        console.error("Final network error creating condition:", error);
-        throw new Error("Network or unexpected error during condition creation.");
-    }
-}
-
-
-/**
- * Updates the status of an existing patient condition record (e.g., changing status to RESOLVED).
- *
- * @param updateData The structured data payload for updating the condition status.
- * @returns A promise that resolves when the condition is successfully updated.
- */
-export async function updatePatientCondition(updateData: UpdateConditionData): Promise<void> {
-    const { conditionUuid, clinicalStatus, endDate } = updateData;
-
-    let headers: Record<string, string>;
-    try {
-        headers = await getAuthHeaders();
-    } catch {
-        redirectToLogin();
-        throw new Error("Authentication failed during condition update.");
-    }
-
-    // --- Construct the OpenMRS Condition Update Payload ---
-    const payload: { [key: string]: any } = {
-        clinicalStatus: clinicalStatus,
-    };
+  const payload = {
+    patient: data.patientUuid,
+    condition: data.conditionConceptUuid,
     
-    // Only include endDate if the status is RESOLVED
-    if (clinicalStatus === 'RESOLVED' && endDate) {
-        payload.endDate = endDate;
-    } else if (clinicalStatus === 'RESOLVED' && !endDate) {
-        // If resolving, use today's date if one isn't provided
-        payload.endDate = new Date().toISOString().split('T')[0]; 
-    }
+    onsetDate: data.onsetDate, 
 
-    const url = `${process.env.OPENMRS_API_URL}/condition/${conditionUuid}`;
+    // FIX: Changed 'status' to 'clinicalStatus' to match the OpenMRS API
+    clinicalStatus: data.clinicalStatus.toUpperCase(), 
+  };
 
-    try {
-        const response = await fetch(url, {
-            method: 'POST', // NOTE: OpenMRS often uses POST for updates/voids on resources
-            headers: {
-                ...headers,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(payload),
-        });
+  const url = `${process.env.OPENMRS_API_URL}/condition`;
 
-        if (!response.ok) {
-            await handleApiError(response, `updatePatientCondition (${conditionUuid})`);
-        }
-    } catch (error) {
-        console.error("Final network error updating condition:", error);
-        throw new Error("Network or unexpected error during condition update.");
-    }
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { ...headers, 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) await handleApiError(response, 'createPatientCondition');
 }
+
+// --- Update Condition ---
+// export async function updatePatientCondition(data: UpdateConditionData) {
+//   const headers = await getAuthHeaders().catch(() => {
+//     redirectToLogin();
+//     throw new Error("Authentication failed during condition update.");
+//   });
+
+//   const payload: any = {
+//     // Applying the same fix to the update payload
+//     conditionStatus: data.clinicalStatus.toUpperCase(),
+//   };
+
+//   if (data.endDate && data.clinicalStatus === 'resolved') {
+//       payload.dateResolved = data.endDate; 
+//   }
+
+//   const url = `${process.env.OPENMRS_API_URL}/condition/${data.conditionUuid}`;
+
+//   const response = await fetch(url, {
+//     method: 'POST', 
+//     headers: { ...headers, 'Content-Type': 'application/json' },
+//     body: JSON.stringify(payload)
+//   });
+
+//   if (!response.ok) await handleApiError(response, `updatePatientCondition (${data.conditionUuid})`);
+// }
+
