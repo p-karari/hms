@@ -1,37 +1,41 @@
 'use server';
 
-import { getAuthHeaders, redirectToLogin } from '@/lib/auth/auth'; // Reusing utilities
-import { ConceptReference } from '@/lib/medications/getPatientMedicationOrders'; // Reusing ConceptReference type
+import { getAuthHeaders, redirectToLogin } from '@/lib/auth/auth';
 
-// --- Core Condition Interface (Based on OpenMRS Condition resource) ---
+// --- Concept Reference Type (Retained for completeness) ---
+export interface ConceptReference {
+    uuid: string;
+    display: string;
+}
+
+// --- Condition Interface (Retained as your target FHIR-like structure) ---
 export interface Condition {
     uuid: string;
     patient: { uuid: string };
     
-    // The concept representing the diagnosis (e.g., Asthma, Diabetes)
-    condition: ConceptReference; 
-    
-    // Status of the problem: ACTIVE, INACTIVE, RESOLVED (OpenMRS standard)
-    clinicalStatus: 'ACTIVE' | 'INACTIVE' | 'RESOLVED' | string;
-    
-    // How the status was documented (e.g., HISTORY, RULE_OUT, CONFIRMED)
-    verificationStatus: 'CONFIRMED' | 'UNCONFIRMED' | 'PROVISIONAL' | string; 
-    
-    // Optional: Date the condition was first observed or diagnosed
-    onsetDate: string | null; 
-    
-    // Optional: Date the condition resolved (if clinicalStatus is RESOLVED)
-    endDate: string | null; 
-    
-    // The encounter or provider that documented the condition
-    encounter: { uuid: string } | null; 
-    
-    // recordedDate: string; // The date the condition record was created
+    // Diagnosis concept
+    code: {
+        coding: Array<{
+            system?: string;
+            code?: string;
+            display: string;
+        }>;
+    };
+
+    clinicalStatus: 'active' | 'inactive' | 'resolved' | string;
+    verificationStatus?: 'confirmed' | 'unconfirmed' | 'provisional' | string;
+
+    onsetDateTime: string | null;
+    abatementDateTime: string | null;
+
+    encounter?: { uuid: string } | null;
 }
 
-// --- Helper for API Error Checking ---
+// --- Helper for API Error Handling (Retained) ---
 async function handleApiError(response: Response, source: string) {
     if (response.status === 401 || response.status === 403) {
+        // Use a standard error message before redirecting
+        console.error(`Authentication failed: HTTP ${response.status}. Redirecting.`);
         redirectToLogin();
         throw new Error(`Authentication failed: HTTP ${response.status}. Redirecting.`);
     }
@@ -41,12 +45,9 @@ async function handleApiError(response: Response, source: string) {
     throw new Error(`Failed to fetch patient conditions: HTTP ${response.status}.`);
 }
 
-
 /**
- * Fetches the complete list of clinical conditions/problems (active and resolved) for a specific patient.
- * * NOTE: OpenMRS uses the '/condition' endpoint for the Problem List.
- * * @param patientUuid The UUID of the patient.
- * @returns A promise that resolves to an array of Condition objects.
+ * Fetch all clinical conditions (active and resolved) for a patient using the FHIR R4 endpoint.
+ * Maps FHIR Condition resources found in a Bundle to the target Condition structure.
  */
 export async function getPatientConditions(patientUuid: string): Promise<Condition[]> {
     if (!patientUuid) {
@@ -62,29 +63,74 @@ export async function getPatientConditions(patientUuid: string): Promise<Conditi
         return [];
     }
 
-    // Fetch all conditions for the patient. Use v=full for detailed status and dates.
-    const url = `${process.env.OPENMRS_API_URL}/condition?patient=${patientUuid}&v=full`;
+    // 🎯 REVISED ROUTE: Using the confirmed working FHIR endpoint.
+    // We use the patient query parameter directly on the FHIR Condition resource.
+    const url = `${process.env.OPENMRS_API_URL_ALT}/Condition?patient=${patientUuid}&_count=100`;
 
     try {
-        const response = await fetch(url, { 
-            headers, 
-            cache: 'no-store' // Critical for up-to-date problem list
+        const response = await fetch(url, {
+            headers,
+            cache: 'no-store',
         });
 
         if (!response.ok) {
-            await handleApiError(response, "getPatientConditions");
+            await handleApiError(response, "getPatientConditions (FHIR)");
             return [];
         }
 
-        const data: { results: Condition[] } = await response.json();
+        // The response is a FHIR Bundle object.
+        const bundle: { resourceType: 'Bundle'; entry: Array<{ resource: any }> } = await response.json();
         
-        // Filter out voided records defensively
-        const activeRecords = data.results.filter((condition: any) => !condition.voided);
-        
-        return activeRecords;
+        // Count FHIR resources that are actually Conditions.
+        const fhirConditionEntries = (bundle.entry || [])
+            .filter(e => e.resource && e.resource.resourceType === 'Condition');
+
+        console.log(`FHIR API returned ${fhirConditionEntries.length} Condition records.`);
+
+        const conditions: Condition[] = fhirConditionEntries.map(entry => {
+                const c = entry.resource;
+                
+                // 🔑 MAPPING FHIR FIELDS TO TARGET INTERFACE:
+                // FHIR 'id' is used as OpenMRS UUID.
+                const conditionUuid = c.id; 
+                
+                // clinicalStatus and code map directly to the target structure.
+                const clinicalStatus = c.clinicalStatus?.coding?.[0]?.code?.toLowerCase() || 'unknown';
+
+                // FHIR uses 'onsetDateTime' and 'abatementDateTime' directly.
+                const onsetDateTime = c.onsetDateTime || null;
+                const abatementDateTime = c.abatementDateTime || c.abatementString || null;
+                
+                // FHIR R4 Condition does not have a standard 'verificationStatus', but 
+                // we can map 'code' and 'display' from the coding array.
+                const coding = c.code?.coding?.map((codingItem: any) => ({
+                    system: codingItem.system,
+                    code: codingItem.code,
+                    display: codingItem.display,
+                })) || [];
+                
+                // FHIR 'subject' field provides the patient UUID (e8c6b2bc-...)
+                const patientReference = c.subject?.reference?.split('/').pop() || patientUuid;
+
+                // FHIR 'encounter' field provides the encounter reference (Encounter/uuid)
+                const encounterUuid = c.encounter?.reference?.split('/').pop();
+
+                return {
+                    uuid: conditionUuid,
+                    patient: { uuid: patientReference },
+                    code: { coding: coding },
+                    clinicalStatus: clinicalStatus,
+                    verificationStatus: c.verificationStatus?.coding?.[0]?.code?.toLowerCase(), // If present
+                    onsetDateTime: onsetDateTime,
+                    abatementDateTime: abatementDateTime, 
+                    encounter: encounterUuid ? { uuid: encounterUuid } : null,
+                };
+            });
+            
+        return conditions;
 
     } catch (error) {
-        console.error('Final error in getPatientConditions:', error);
-        return [];
+        console.error('Final error in getPatientConditions (Re-throwing):', error);
+        throw new Error("Condition fetch failed due to an unexpected error during communication or parsing.");
     }
 }
