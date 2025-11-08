@@ -1,30 +1,38 @@
 'use server';
 
 import { getAuthHeaders, redirectToLogin } from '@/lib/auth/auth';
-import { ConceptReference } from '@/lib/medications/getPatientMedicationOrders'; // Reusing ConceptReference type
+// Assuming this is the correct path for ConceptReference, but defining locally for safety
+export type ConceptReference = { uuid: string; display: string; };
 
-// --- Core Immunization Interface ---
-// Represents a single administered dose of a vaccine.
+// --- Core Immunization Interface (Updated for FHIR data structure) ---
 export interface Immunization {
-    uuid: string;
-    // The administered vaccine (e.g., MMR, Pfizer)
+    uuid: string; // FHIR resource ID (Immunization.id)
+    // The administered vaccine
     vaccineConcept: ConceptReference; 
     
-    // The date the vaccine was administered
+    // The date the vaccine was administered (Immunization.occurrenceDateTime)
     administrationDate: string;
     
-    // The specific encounter where the vaccine was recorded
-    encounter: { uuid: string; display: string } | null;
+    // The specific encounter/visit where the vaccine was recorded (Immunization.encounter)
+    encounter: { uuid: string } | null;
     
-    // The dose sequence (e.g., 1st dose, 2nd dose) - often stored as Obs or attributes
-    doseSequence?: string; 
+    // The dose sequence (Immunization.protocolApplied[0].doseNumberPositiveInt)
+    doseSequence: number | null; 
     
-    // The administering provider
-    provider?: { uuid: string; display: string } | null;
+    // The administering provider (Immunization.performer[0].actor)
+    provider: { uuid: string; display: string } | null;
     
-    // Optional: Location of administration
-    location?: { uuid: string; display: string } | null;
+    // Optional: Location of administration (Immunization.location)
+    location: { uuid: string; display: string } | null;
+    
+    // Additional fields from the FHIR payload
+    lotNumber?: string;
+    manufacturerDisplay?: string;
+    expirationDate?: string;
 }
+
+// --- API Configuration ---
+const FHIR_IMMUNIZATION_URL = `${process.env.OPENMRS_API_URL_ALT}/Immunization`;
 
 // --- Helper for API Error Checking ---
 async function handleApiError(response: Response, source: string) {
@@ -34,15 +42,14 @@ async function handleApiError(response: Response, source: string) {
     }
 
     const errorText = await response.text();
-    console.error(`OpenMRS API Error [${source}] ${response.status}: ${errorText.substring(0, 100)}`);
+    // Log up to 100 characters of the error text
+    console.error(`API Error [${source}] ${response.status}: ${errorText.substring(0, 100)}`);
     throw new Error(`Failed to fetch immunizations: HTTP ${response.status}.`);
 }
 
 /**
  * Fetches the historical list of immunizations for a specific patient.
- * * NOTE: This assumes Immunization records are stored as Encounters of a specific type
- * (e.g., 'IMMUNIZATION RECORD ENCOUNTER'). You must configure your OpenMRS instance
- * to use a consistent concept/encounter type for this to work reliably.
+ * Uses the confirmed **FHIR R4 API** (`/ws/fhir2/R4/Immunization`).
  * * @param patientUuid The UUID of the patient.
  * @returns A promise that resolves to an array of Immunization objects.
  */
@@ -59,60 +66,61 @@ export async function getPatientImmunizations(patientUuid: string): Promise<Immu
         redirectToLogin();
         return [];
     }
-
-    // --- Configuration: Define the Immunization Encounter Type ---
-    // Search by encounter type name or UUID if known. We use a name for simplicity.
-    const IMMUNIZATION_ENCOUNTER_TYPE = "IMMUNIZATION RECORD"; 
-
-    // We must fetch the Encounter Type UUID first, or just query by patient and filter later.
-    // Querying by patient and using v=full to inspect contents is often simpler in OpenMRS REST API.
     
-    // Query the encounter endpoint, filtering by patient.
-    const url = `${process.env.OPENMRS_API_URL}/encounter?patient=${patientUuid}&v=full`; 
+    // Use FHIR R4 GET endpoint as demonstrated in the context
+    const fetchUrl = `${FHIR_IMMUNIZATION_URL}?patient=${patientUuid}&_count=100&_summary=data`;
 
     try {
-        const response = await fetch(url, { 
-            headers, 
-            cache: 'no-store' // Ensure current history
-        });
+        const response = await fetch(fetchUrl, { headers, cache: 'no-store' });
 
         if (!response.ok) {
-            await handleApiError(response, "getPatientImmunizations");
+            await handleApiError(response, `getPatientImmunizations for Patient ${patientUuid}`);
             return [];
         }
 
-        const data: { results: any[] } = await response.json();
+        const fhirBundle: any = await response.json();
         
-        // --- Custom Logic: Filter and Process Immunization Encounters ---
-        const immunizations: Immunization[] = data.results
-            .filter(enc => enc.encounterType?.display === IMMUNIZATION_ENCOUNTER_TYPE) // Filter by type
-            .flatMap(enc => {
-                // Now, extract the immunization details from the Obs recorded within that encounter.
-                // This assumes: The OBS contains the Vaccine Concept and Dose information.
+        const immunizations: Immunization[] = (fhirBundle.entry || [])
+            .map((entry: any) => entry.resource)
+            .filter((resource: any) => resource?.resourceType === 'Immunization' && resource.status === 'completed')
+            .map((r: any) => {
+                // Determine the primary coding for the vaccine
+                const primaryCoding = r.vaccineCode?.coding?.[0] || {};
                 
-                // You need a concept name/UUID that represents the VACCINE ADMINISTERED observation.
-                const VACCINE_ADMINISTERED_CONCEPT = "VACCINE ADMINISTERED"; 
+                // Extract performer (provider)
+                const performer = r.performer?.[0]?.actor;
                 
-                // Find all Obs that document an immunization
-                const vaccineObs = enc.obs.filter((o: any) => o.concept.display === VACCINE_ADMINISTERED_CONCEPT);
-
-                return vaccineObs.map((obs: any) => ({
-                    uuid: obs.uuid, // Using OBS UUID as the record ID
+                // Extract location
+                const location = r.location;
+                
+                return {
+                    uuid: r.id, // FHIR Immunization ID
                     vaccineConcept: {
-                        // The value of the OBS is the administered vaccine concept (e.g., MMR)
-                        uuid: obs.value.uuid, 
-                        display: obs.value.display,
+                        uuid: primaryCoding.code || 'unknown', // Use the Concept UUID/code
+                        display: primaryCoding.display || r.vaccineCode?.text || 'Unknown Vaccine',
                     },
-                    administrationDate: obs.obsDatetime,
-                    encounter: { uuid: enc.uuid, display: enc.display },
-                    // Extract provider from encounterProviders if available
-                    provider: enc.encounterProviders?.length > 0 ? enc.encounterProviders[0].provider : null,
-                    location: enc.location,
-                    // Dose sequence often requires a second OBS/logic, simplified here
-                    doseSequence: '1st Dose' // Placeholder
-                } as Immunization));
+                    administrationDate: r.occurrenceDateTime || 'Unknown Date', // FHIR date field
+                    
+                    // Convert FHIR reference (e.g., "Encounter/UUID") to a simple object
+                    encounter: r.encounter?.reference ? { uuid: r.encounter.reference.split('/')[1] } : null,
+                    location: location?.reference ? { 
+                        uuid: location.reference.split('/')[1], 
+                        display: location.display || 'Unknown Location' 
+                    } : null,
+                    
+                    doseSequence: r.protocolApplied?.[0]?.doseNumberPositiveInt || null,
+                    
+                    provider: performer ? { 
+                        uuid: performer.reference?.split('/')[1] || 'unknown', 
+                        display: performer.display || 'Unknown Provider' 
+                    } : null,
+                    
+                    lotNumber: r.lotNumber,
+                    manufacturerDisplay: r.manufacturer?.display,
+                    expirationDate: r.expirationDate,
+                };
             });
-        
+            
         return immunizations;
 
     } catch (error) {
