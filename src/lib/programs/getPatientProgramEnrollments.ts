@@ -5,11 +5,9 @@ import { getAuthHeaders, redirectToLogin } from '@/lib/auth/auth';
 export interface ConceptReference {
     uuid: string;
     display: string; 
-    // Added 'name' to the ConceptReference type to support robust display logic in the client component
     name?: string; 
 }
 
-// --- Core Program Enrollment Interfaces ---
 
 export interface ProgramState {
     uuid: string;
@@ -36,7 +34,6 @@ export interface ProgramEnrollment {
     location: { uuid: string; display: string };
 }
 
-// --- Helper for API Error Checking ---
 async function handleApiError(response: Response, source: string) {
     if (response.status === 401 || response.status === 403) {
         redirectToLogin();
@@ -48,13 +45,6 @@ async function handleApiError(response: Response, source: string) {
     throw new Error(`Failed to fetch program enrollments: HTTP ${response.status}.`);
 }
 
-/**
- * Fetches the complete list of clinical program enrollments (active and historical) 
- * for a specific patient.
- * * NOTE: This uses the /programenrollment endpoint, which is standard in OpenMRS.
- * * @param patientUuid The UUID of the patient.
- * @returns A promise that resolves to an array of ProgramEnrollment objects.
- */
 export async function getPatientProgramEnrollments(patientUuid: string): Promise<ProgramEnrollment[]> {
     if (!patientUuid) {
         console.error("Patient UUID is required to fetch program enrollments.");
