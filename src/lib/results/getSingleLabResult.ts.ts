@@ -3,7 +3,6 @@
 import { getAuthHeaders, redirectToLogin } from '@/lib/auth/auth';
 import { LabResult } from './getPatientLabResults'; // Reusing the defined LabResult interface
 
-// --- Helper for API Error Checking (Matching your structure) ---
 async function handleApiError(response: Response, source: string) {
     if (response.status === 401 || response.status === 403) {
         redirectToLogin();
@@ -15,11 +14,7 @@ async function handleApiError(response: Response, source: string) {
     throw new Error(`Failed to fetch observation data for ${source}: HTTP ${response.status}.`);
 }
 
-/**
- * Fetches the full details of a single Observation (Lab Result) by its UUID.
- * * @param obsUuid The UUID of the specific Observation to fetch.
- * @returns A promise that resolves to a single, simplified LabResult object, or null.
- */
+
 export async function getSingleLabResult(obsUuid: string): Promise<LabResult | null> {
     if (!obsUuid) {
         console.error("Observation UUID is required to fetch details.");
@@ -34,13 +29,12 @@ export async function getSingleLabResult(obsUuid: string): Promise<LabResult | n
         return null;
     }
 
-    // Use v=full to ensure we get all nested concept and value details
     const url = `${process.env.OPENMRS_API_URL}/obs/${obsUuid}?v=full`;
 
     try {
         const response = await fetch(url, { 
             headers, 
-            cache: 'no-store' // Result details should be current
+            cache: 'no-store' 
         });
 
         if (!response.ok) {
@@ -50,7 +44,6 @@ export async function getSingleLabResult(obsUuid: string): Promise<LabResult | n
 
         const obs: any = await response.json();
         
-        // --- Mapping Logic (Similar to getPatientLabResults) ---
         const numericValue = typeof obs.value === 'number' ? obs.value : null;
         const textValue = typeof obs.value === 'string' ? obs.value : obs.valueCodedName || null;
         
