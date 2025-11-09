@@ -2,31 +2,27 @@
 
 import { getAuthHeaders, redirectToLogin } from '@/lib/auth/auth';
 
-// --- Interface for New Program Enrollment ---
 export interface NewEnrollmentData {
     patientUuid: string;
-    programUuid: string;      // The UUID of the program (e.g., HIV Program)
-    dateEnrolled: string;     // The start date of the enrollment (ISO format)
-    locationUuid?: string;    // Optional: Location of enrollment
+    programUuid: string;     
+    dateEnrolled: string;     
+    locationUuid?: string;    
 }
 
-// --- Interface for Program Exit (Update) ---
 export interface ExitProgramData {
-    enrollmentUuid: string;   // The UUID of the existing enrollment record
-    dateCompleted: string;    // The date the patient exited the program (ISO format)
-    // Optional: The concept UUID explaining the reason for exiting (e.g., 'Cured', 'Lost to Follow-up')
+    enrollmentUuid: string;   
+    dateCompleted: string;   
+    
     outcomeConceptUuid?: string; 
 }
 
-// --- Interface for Program State Change (Update) ---
 export interface ChangeProgramStateData {
-    enrollmentUuid: string;   // The UUID of the existing enrollment record
-    stateUuid: string;        // The UUID of the *new* program workflow state
-    stateStartDate: string;   // The date the patient entered this new state (ISO format)
+    enrollmentUuid: string;   
+    stateUuid: string;        
+    stateStartDate: string;   
 }
 
 
-// --- Helper for API Error Checking ---
 async function handleApiError(response: Response, source: string) {
     if (response.status === 401 || response.status === 403) {
         redirectToLogin();
@@ -39,12 +35,6 @@ async function handleApiError(response: Response, source: string) {
 }
 
 
-/**
- * Creates a new patient enrollment in a specified program.
- *
- * @param data The data payload for the new enrollment.
- * @returns A promise that resolves when the enrollment is successfully created.
- */
 export async function createProgramEnrollment(data: NewEnrollmentData): Promise<void> {
     const { patientUuid, programUuid, dateEnrolled, locationUuid } = data;
 
@@ -56,13 +46,11 @@ export async function createProgramEnrollment(data: NewEnrollmentData): Promise<
         throw new Error("Authentication failed during enrollment creation.");
     }
     
-    // --- Construct the Program Enrollment Payload ---
     const payload = {
         patient: patientUuid,
         program: programUuid,
         dateEnrolled: dateEnrolled,
         location: locationUuid,
-        // Optional: initial state can be added here if required by the program configuration
     };
 
     const url = `${process.env.OPENMRS_API_URL}/programenrollment`;
@@ -87,12 +75,6 @@ export async function createProgramEnrollment(data: NewEnrollmentData): Promise<
 }
 
 
-/**
- * Updates an existing program enrollment record to mark the patient as having exited/completed the program.
- *
- * @param data The data payload for exiting the program.
- * @returns A promise that resolves when the program exit is successfully recorded.
- */
 export async function exitProgramEnrollment(data: ExitProgramData): Promise<void> {
     const { enrollmentUuid, dateCompleted, outcomeConceptUuid } = data;
 
@@ -134,14 +116,6 @@ export async function exitProgramEnrollment(data: ExitProgramData): Promise<void
 }
 
 
-/**
- * Records a change in the patient's internal state within an enrolled program 
- * (e.g., changing from 'Active' to 'Lost to Follow-up').
- * * NOTE: This requires creating a new record on a sub-resource endpoint.
- *
- * @param data The data payload for the state change.
- * @returns A promise that resolves when the state change is successfully recorded.
- */
 export async function changeProgramState(data: ChangeProgramStateData): Promise<void> {
     const { enrollmentUuid, stateUuid, stateStartDate } = data;
 
@@ -153,13 +127,11 @@ export async function changeProgramState(data: ChangeProgramStateData): Promise<
         throw new Error("Authentication failed during state change.");
     }
     
-    // --- Construct the Program State Payload ---
     const payload = {
         state: stateUuid,
         startDate: stateStartDate,
     };
 
-    // The endpoint is nested under the enrollment UUID
     const url = `${process.env.OPENMRS_API_URL}/programenrollment/${enrollmentUuid}/states`;
 
     try {
