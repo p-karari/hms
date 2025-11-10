@@ -2,13 +2,11 @@
 
 import { getAuthHeaders, redirectToLogin } from '@/lib/auth/auth'; 
 
-// --- Corrected Type definition for the program options ---
 export type ProgramOption = {
     uuid: string;
     display: string;
 };
 
-// --- Helper for API Error Checking (omitted for brevity) ---
 async function handleApiError(response: Response, source: string) {
     if (response.status === 401 || response.status === 403) {
         redirectToLogin();
@@ -20,12 +18,7 @@ async function handleApiError(response: Response, source: string) {
     throw new Error(`Failed to fetch available program data: HTTP ${response.status}.`);
 }
 
-/**
- * Fetches a list of all non-retired programs available in the OpenMRS instance.
- * This list is used for enrolling a patient into a specific long-term health program.
- *
- * @returns A promise that resolves to an array of ProgramOption objects.
- */
+
 export async function getAvailableProgramOptions(): Promise<ProgramOption[]> {
     let headers: Record<string, string>;
     try {
@@ -47,16 +40,13 @@ export async function getAvailableProgramOptions(): Promise<ProgramOption[]> {
             return [];
         }
 
-        // --- FIX: Explicitly define the type for the result items here ---
         type ProgramApiResult = ProgramOption & { retired: boolean };
 
         const data: { results: ProgramApiResult[] } = await response.json();
         
-        // Filter out retired programs
         const activePrograms: ProgramOption[] = data.results
             .filter(program => !program.retired)
-            // The mapping is now safe because 'program' is correctly typed as ProgramApiResult 
-            // which includes uuid and display.
+            
             .map(program => ({ uuid: program.uuid, display: program.display }));
 
         return activePrograms;
