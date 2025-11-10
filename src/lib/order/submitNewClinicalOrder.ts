@@ -1,11 +1,8 @@
 'use server';
 
 import { getAuthHeaders } from '@/lib/auth/auth';
-// import { getEncounterTypeUuid } from '@/lib/config/encounter'; // your helper
-// import { getProviderUuid } from '@/lib/config/provider'; // uses env
 import { getEncounterTypeUuid } from '../encounters/encounterType';
 import { getSessionLocation } from '../location/location';
-// import { getSessionLocation } from '@/lib/session/getSessionLocation'; // adjust path if needed
 
 export interface NewOrderSubmissionData {
   patientUuid: string;
@@ -17,10 +14,7 @@ export interface NewOrderSubmissionData {
   urgency?: 'ROUTINE' | 'STAT';
 }
 
-/**
- * Submits a new clinical order (lab/test or drug) by creating an encounter that contains the order.
- * This mirrors the behavior of the official OpenMRS frontend.
- */
+
 export async function submitNewClinicalOrder(submissionData: NewOrderSubmissionData): Promise<void> {
   const {
     patientUuid,
@@ -32,7 +26,6 @@ export async function submitNewClinicalOrder(submissionData: NewOrderSubmissionD
     urgency,
   } = submissionData;
 
-  // --- Validate required fields ---
   if (!patientUuid || !conceptUuid || !orderType) {
     throw new Error('Missing required fields for order submission.');
   }
@@ -43,14 +36,12 @@ if (!providerUuid) {
 }
 
   try {
-    // Fetch helper data
     const [headers, encounterTypeUuid, sessionLocation] = await Promise.all([
       getAuthHeaders(),
       getEncounterTypeUuid('Order'),
       getSessionLocation(),
     ]);
 
-    // Construct encounter payload (OpenMRS expected structure)
     const payload = {
       encounterType: encounterTypeUuid,
       patient: patientUuid,
