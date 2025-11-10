@@ -2,7 +2,6 @@
 
 import { getAuthHeaders, redirectToLogin } from '../auth/auth';
 
-// Define complex types for the patient object
 export interface Identifier {
   uuid: string;
   identifier: string;
@@ -18,7 +17,7 @@ export interface Name {
   familyName: string;
   preferred: boolean;
   voided: boolean;
-  links: any[]; // Added 'links' for completeness
+  links: any[]; 
   resourceVersion: string;
 }
 
@@ -33,7 +32,6 @@ export interface Address {
   country: string | null;
   postalCode: string | null;
   countyDistrict: string | null;
-  // Included other address fields as they are present in v=full
   address3: string | null; 
   address4: string | null; 
   address5: string | null; 
@@ -49,7 +47,6 @@ export interface PersonAttribute {
   attributeType: { uuid: string; display: string };
 }
 
-// Updated Person structure to match the nested JSON data
 export interface Person {
   uuid: string;
   display: string;
@@ -57,7 +54,7 @@ export interface Person {
   age: number;
   birthdate: string;
   birthdateEstimated: boolean;
-  dead: boolean; // Renamed from isDead
+  dead: boolean; 
   deathDate: string | null;
   causeOfDeath: string | null;
   preferredName: Name;
@@ -71,52 +68,36 @@ export interface Person {
   resourceVersion: string;
 }
 
-// Updated PatientDetailsType
 export interface PatientDetailsType {
   uuid: string;
   display: string;
   identifiers: Identifier[];
-  // The demographic fields and addresses are now correctly nested under 'person'
   person: Person;
   voided: boolean;
   auditInfo: any;
   links: any[];
   resourceVersion: string;
 
-  // NOTE: You can remove these root properties as they are now under 'person'
-  // and are redundant or potentially outdated at the root level of the patient resource.
-  // gender?: string;
-  // age?: number;
-  // birthdate?: string;
-  // birthdateEstimated?: boolean;
-  // isDead?: boolean;
-  // addresses?: Address[];
-  // attributes?: PersonAttribute[];
-  hasAllergies?: boolean; // This one remains as it's not in the 'person' object
+  hasAllergies?: boolean; 
 }
 
-/**
- * Fetch a single, full patient record using their UUID.
- */
 export async function getPatientDetails(patientUuid: string): Promise<PatientDetailsType | null> {
   let headers: Record<string, string>;
   try {
     headers = await getAuthHeaders();
   } catch {
-    // If auth fails, redirect to login
     redirectToLogin();
     return null;
   }
 
   try {
-    // Use v=full to get a comprehensive set of patient data (identifiers, addresses, attributes, etc.)
     const res = await fetch(
       `${process.env.OPENMRS_API_URL}/patient/${patientUuid}?v=full`,
       { headers }
     );
 
     if (!res.ok) {
-      if (res.status === 404) return null; // Patient not found
+      if (res.status === 404) return null; 
       const errorText = await res.text();
       throw new Error(`Failed to fetch patient details: ${res.status} - ${errorText}`);
     }
