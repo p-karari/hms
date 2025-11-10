@@ -1,16 +1,15 @@
 'use server';
 
-import { getAuthHeaders, redirectToLogin } from '../auth/auth'; // Assuming path to your auth utilities
-import { CodedValue } from './getVisitTypes'; // Reusing the CodedValue interface
+import { getAuthHeaders, redirectToLogin } from '../auth/auth'; 
+import { CodedValue } from './getVisitTypes'; 
 
-// Interface for a single observation object to be sent to the API
 export interface ObsData {
-  person: string;         // Patient UUID (required by the obs endpoint)
-  concept: string;        // Concept UUID (e.g., 'Weight', 'Temperature')
-  value: string | number; // The recorded vital sign value
-  encounter: string;      // Encounter UUID (to link the obs)
-  obsDatetime?: string;   // Optional: defaults to encounter time
-  location?: string;      // Optional: defaults to encounter location
+  person: string;         
+  concept: string;        
+  value: string | number; 
+  encounter: string;      
+  obsDatetime?: string;   
+  location?: string;      
 }
 
 // Interface for the response (full Observation object)
@@ -19,7 +18,6 @@ export interface Observation {
   display: string;
   concept: CodedValue;
   value: string | number;
-  // ... other properties
 }
 
 /**
@@ -38,7 +36,6 @@ export async function createObservations(obs: ObsData[]): Promise<Observation[] 
   const url = `${process.env.OPENMRS_API_URL}/obs`;
   
   try {
-    // The API accepts an array of Obs JSON objects
     const res = await fetch(url, {
       method: 'POST',
       headers: { ...headers, 'Content-Type': 'application/json' },
@@ -51,9 +48,8 @@ export async function createObservations(obs: ObsData[]): Promise<Observation[] 
       throw new Error(`Failed to create observations: ${res.status} - ${errorText.substring(0, 150)}...`);
     }
 
-    // The REST API often returns an array of the created Obs objects
     const data = await res.json();
-    return data; // Returns the array of created observations
+    return data; 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error('Error creating observations:', errorMessage);
