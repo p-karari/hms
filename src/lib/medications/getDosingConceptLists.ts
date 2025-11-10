@@ -12,7 +12,6 @@ export interface DosingConceptLists {
     quantityUnits: DosingConceptOption[];
 }
 
-// --- Helper for API Error Checking (Matching your structure) ---
 async function handleApiError(response: Response, source: string) {
     if (response.status === 401 || response.status === 403) {
         redirectToLogin();
@@ -24,18 +23,11 @@ async function handleApiError(response: Response, source: string) {
     throw new Error(`Failed to fetch concept data for ${source}: HTTP ${response.status}.`);
 }
 
-/**
- * Executes a two-step lookup to find a Concept Set's members:
- * 1. Finds the parent Concept UUID by its display name.
- * 2. Fetches the set members (the list options) using that UUID.
- * @param conceptSetName The display name of the concept set (e.g., "Drug Dosing Units").
- * @param headers Authentication headers.
- */
+
 async function getConceptSetMembersByName(conceptSetName: string, headers: Record<string, string>): Promise<DosingConceptOption[]> {
     const apiBaseUrl = process.env.OPENMRS_API_URL;
     const encodedName = encodeURIComponent(conceptSetName);
 
-    // Step 1: Search for the parent Concept UUID by name
     const searchUrl = `${apiBaseUrl}/concept?q=${encodedName}&v=custom:(uuid)`;
     const searchResponse = await fetch(searchUrl, { headers, cache: 'force-cache' });
 
@@ -52,7 +44,6 @@ async function getConceptSetMembersByName(conceptSetName: string, headers: Recor
         return [];
     }
     
-    // Step 2: Fetch the set members using the found UUID
     const fetchMembersUrl = `${apiBaseUrl}/concept/${parentConcept.uuid}?v=custom:(setMembers:(uuid,display))`;
     const membersResponse = await fetch(fetchMembersUrl, { headers, cache: 'force-cache' });
 
@@ -69,7 +60,6 @@ async function getConceptSetMembersByName(conceptSetName: string, headers: Recor
     }));
 }
 
-// --- Helper to search individual frequency concepts case-insensitively ---
 async function searchFrequencyConcepts(headers: Record<string, string>): Promise<DosingConceptOption[]> {
     const apiBaseUrl = process.env.OPENMRS_API_URL;
     const searchTerms = [
@@ -94,7 +84,6 @@ async function searchFrequencyConcepts(headers: Record<string, string>): Promise
     const results = await Promise.all(searchPromises);
     const flattened = results.flat();
 
-    // Deduplicate by UUID
     const seen = new Set();
     const deduped = flattened.filter(item => {
         if (seen.has(item.uuid)) return false;
@@ -137,7 +126,6 @@ export async function getDosingConceptLists(): Promise<DosingConceptLists> {
         return acc;
     }, {} as DosingConceptLists);
 
-    // If no "Dosing Frequency" concept set found, try searching individual frequency terms
     if (!finalLists.frequencies || finalLists.frequencies.length === 0) {
         console.warn('No "Dosing Frequency" concept set found — performing individual frequency search...');
         finalLists.frequencies = await searchFrequencyConcepts(headers);
