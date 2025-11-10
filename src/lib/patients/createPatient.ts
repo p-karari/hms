@@ -4,7 +4,6 @@ import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { getAuthHeaders, redirectToLogin } from "../auth/auth";
 import { getOpenMRSSessionDetails } from "../openmrs-api/session";
 
-/** 🧠 Estimate birthdate from numeric age */
 function estimateBirthdate(ageYears: number, ageMonths: number = 0): string {
   const today = new Date();
   today.setFullYear(today.getFullYear() - ageYears);
@@ -12,12 +11,9 @@ function estimateBirthdate(ageYears: number, ageMonths: number = 0): string {
   return today.toISOString().split("T")[0];
 }
 
-/** 🧮 Generate a pseudo–Luhn-valid OpenMRS ID */
 function generateOpenMRSIdentifier(): string {
-  // Start with a random 7-digit number
   const base = Math.floor(1000000 + Math.random() * 9000000).toString();
   
-  // Compute check digit (Luhn Mod 30)
   const chars = "0123456789ACDEFGHJKLMNPRTUVWXY";
   let factor = 2;
   let sum = 0;
@@ -55,12 +51,10 @@ interface PersonPayload {
   addresses?: AddressPayload[];
 }
 
-/** ✅ Manual static-identifier version with valid OpenMRS format */
 export async function createPatient(formData: FormData) {
   const baseUrl = process.env.OPENMRS_API_URL;
   const url = `${baseUrl}/patient`;
 
-  // ✅ Auth headers
   let headers: Record<string, string>;
   try {
     headers = await getAuthHeaders();
@@ -69,10 +63,8 @@ export async function createPatient(formData: FormData) {
     return;
   }
 
-  // ✅ Optional context
   await getOpenMRSSessionDetails();
 
-  // ✅ Handle unidentified patients
   const isUnidentified = formData.get("unidentified") === "true";
   const givenName = isUnidentified
     ? "UNKNOWN"
@@ -81,7 +73,6 @@ export async function createPatient(formData: FormData) {
     ? "UNKNOWN"
     : formData.get("familyName")?.toString().trim() || "";
 
-  // ✅ Birthdate logic
   const birthdate =
     formData.get("birthdate")?.toString() ||
     (formData.get("ageYears") || formData.get("ageMonths")
@@ -97,7 +88,6 @@ export async function createPatient(formData: FormData) {
       ? true
       : false;
 
-  // ✅ Gender normalization
   const genderRaw = formData.get("gender")?.toString().toLowerCase();
   const gender =
     genderRaw === "male"
@@ -108,7 +98,6 @@ export async function createPatient(formData: FormData) {
       ? "O"
       : "U";
 
-  // ✅ Build the person object
   const person: PersonPayload = {
     names: givenName && familyName ? [{ givenName, familyName }] : undefined,
     gender,
@@ -123,10 +112,8 @@ export async function createPatient(formData: FormData) {
     ],
   };
 
-  // ✅ Identifier Type UUID (OpenMRS ID)
   const identifierTypeUuid = "05a29f94-c0ed-11e2-94be-8c13b969e334";
 
-  // ✅ Generate valid OpenMRS-style identifier
   const validIdentifier = generateOpenMRSIdentifier();
 
   const newPatientPayload = {
