@@ -3,7 +3,6 @@
 import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { getAuthHeaders, redirectToLogin } from "../auth/auth";
 
-// 1. Define the specific interface for the request body to eliminate 'any'
 
 interface OpenMrsPersonUpdate {
   names?: Array<{
@@ -11,7 +10,7 @@ interface OpenMrsPersonUpdate {
     familyName?: string;
   }>;
   gender?: "M" | "F" | string;
-  birthdate?: string; // OpenMRS typically expects YYYY-MM-DD
+  birthdate?: string; 
   addresses?: Array<{
     address1?: string;
     address2?: string;
@@ -26,10 +25,7 @@ interface OpenMrsPatientUpdateBody {
   person?: OpenMrsPersonUpdate;
 }
 
-/**
- * Updates an existing OpenMRS patient by UUID.
- * Compatible with OpenMRS 2.7.0 REST API.
- */
+
 export async function updatePatient(patientUuid: string, updates: {
   givenName?: string;
   familyName?: string;
@@ -47,12 +43,9 @@ export async function updatePatient(patientUuid: string, updates: {
   try {
     const headers = await getAuthHeaders();
 
-    // 2. Use the defined interface instead of 'any'
     const body: OpenMrsPatientUpdateBody = {};
 
-    // Only include provided fields
     if (updates.givenName || updates.familyName) {
-      // Initialize person object if it doesn't exist
       body.person = body.person || {};
       body.person.names = [
         {
@@ -81,7 +74,6 @@ export async function updatePatient(patientUuid: string, updates: {
       ];
     }
     
-    // Safety check: The body must contain a person object to send updates
     if (!body.person) {
         throw new Error("No update fields provided for patient/person.");
     }
@@ -89,7 +81,7 @@ export async function updatePatient(patientUuid: string, updates: {
     const response = await fetch(
       `${process.env.OPENMRS_API_URL}/patient/${patientUuid}`,
       {
-        method: "POST", // OpenMRS expects POST for updating patient/person sub-resources
+        method: "POST", 
         headers: {
           ...headers,
           "Content-Type": "application/json",
