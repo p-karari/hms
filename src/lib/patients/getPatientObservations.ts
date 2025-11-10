@@ -2,20 +2,16 @@
 
 import { getAuthHeaders, redirectToLogin } from '../auth/auth';
 
-// --- Type Definitions for OpenMRS Observation Values ---
 
-// Represents a coded value (e.g., a diagnosis or a selection from a list)
 export interface CodedValue {
   uuid: string;
   display: string;
 }
 
-// Observation interface with explicit value typing
 export interface Observation {
   uuid: string;
   obsDatetime: string;
   concept: CodedValue;
-  // OpenMRS REST can return different value types. We check for the most common ones.
   value?: string | number | boolean | CodedValue | null;
   valueNumeric?: number;
   valueText?: string;
@@ -24,7 +20,6 @@ export interface Observation {
   valueBoolean?: boolean;
 }
 
-// --- Action Function ---
 
 export async function getPatientObservations(patientUuid: string): Promise<Observation[]> {
 
@@ -37,9 +32,8 @@ export async function getPatientObservations(patientUuid: string): Promise<Obser
     return [];
   }
 
-  // Using v=full to ensure we get all the value fields (valueNumeric, valueText, etc.)
   const url = `${process.env.OPENMRS_API_URL}/obs?patient=${patientUuid}&v=full`;
-
+  console.log('getPatientObservations function running, url = :', url);
   const response = await fetch(url, {
       headers: {
         ...headers,
@@ -55,6 +49,5 @@ export async function getPatientObservations(patientUuid: string): Promise<Obser
   }
 
   const data = await response.json();
-  // We can trust the data structure matches our interface based on the v=full response
   return data.results as Observation[];
 }
