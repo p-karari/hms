@@ -6,9 +6,8 @@ import { SessionContextType } from '../context/session-context';
 import { getPatientActiveVisit } from '../visits/getActiveVisit';
 import { getOrderTypeUuid } from '../config/orderType';
 import { getCareSettingUuid } from '../config/careSetting';
-import { createEncounter } from '../encounters/createEncounter'; // ✅ dynamic encounter creator
+import { createEncounter } from '../encounters/createEncounter'; 
 
-// --- Interface for Form Data ---
 export interface NewOrderFormData {
     patientUuid: string;
     drugUuid: string;
@@ -21,10 +20,9 @@ export interface NewOrderFormData {
     quantity: number;
     quantityUnitsConceptUuid: string;
     instructions: string;
-    numRefills?: number; // optional, will default to 0
+    numRefills?: number; 
 }
 
-// --- Helper for API Error Handling ---
 async function handleApiError(response: Response) {
     if (response.status === 401 || response.status === 403) {
         redirectToLogin();
@@ -36,10 +34,7 @@ async function handleApiError(response: Response) {
     throw new Error(`Failed to submit drug order: HTTP ${response.status}.`);
 }
 
-/**
- * Submits a new drug order.
- * Automatically creates an encounter if none exists.
- */
+
 export async function submitNewDrugOrder(
     formData: NewOrderFormData,
     sessionData: SessionContextType
@@ -48,13 +43,11 @@ export async function submitNewDrugOrder(
         throw new Error("User must be authenticated to place an order.");
     }
 
-    // 1️⃣ Ensure patient has an active visit
     const activeVisit = await getPatientActiveVisit(formData.patientUuid);
     if (!activeVisit) {
         throw new Error("Cannot place order: Patient does not have an active visit.");
     }
 
-    // 2️⃣ Ensure an encounter exists (create dynamically if missing)
     let encounterUuid: string;
     try {
         encounterUuid = await createEncounter({
@@ -67,14 +60,12 @@ export async function submitNewDrugOrder(
         throw new Error('Failed to create encounter for drug order.');
     }
 
-    // 3️⃣ Fetch dynamic configuration UUIDs
     const [orderTypeUuid, careSettingUuid, durationUnitsUuid] = await Promise.all([
         getOrderTypeUuid('Drug Order'),
         getCareSettingUuid('Outpatient'),
         getConceptUuid('Days')
     ]);
 
-    // 4️⃣ Construct payload
     const nowISO = new Date().toISOString();
     const ordererUuid = process.env.NEXT_PUBLIC_DEFAULT_PROVIDER_UUID;
     if (!ordererUuid) {
@@ -85,11 +76,11 @@ export async function submitNewDrugOrder(
         patient: formData.patientUuid,
         concept: formData.conceptUuid,
         drug: formData.drugUuid,
-        orderer: ordererUuid, // ✅ hardcoded provider for testing
+        orderer: ordererUuid, 
         careSetting: careSettingUuid,
         orderType: orderTypeUuid,
         action: "NEW",
-        encounter: encounterUuid, // ✅ guaranteed encounter
+        encounter: encounterUuid, 
         dosingType: "org.openmrs.SimpleDosingInstructions",
         dose: formData.dose,
         doseUnits: formData.doseUnitsConceptUuid,
@@ -101,10 +92,9 @@ export async function submitNewDrugOrder(
         quantityUnits: formData.quantityUnitsConceptUuid,
         instructions: formData.instructions,
         dateActivated: nowISO,
-        numRefills: formData.numRefills ?? 0 // ✅ required for outpatient orders
+        numRefills: formData.numRefills ?? 0 
     };
 
-    // 5️⃣ Submit to OpenMRS
     let headers: Record<string, string>;
     try {
         headers = await getAuthHeaders();
