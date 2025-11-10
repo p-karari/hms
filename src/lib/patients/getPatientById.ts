@@ -8,7 +8,6 @@ export interface Patient {
   gender: string;
   birthdate: string;
   identifiers: { identifier: string; identifierType: string }[];
-  // Add other fields you need from OpenMRS
 }
 
 export async function getPatientByIds(uuids: string[]): Promise<Patient[]> {
