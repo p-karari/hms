@@ -16,7 +16,6 @@ export interface IdentifierTypeApiResponse {
 let IDENTIFIER_TYPES_CACHE: IdentifierType[] | null = null;
 
 export default async function getIdentifierTypes(): Promise<IdentifierTypeApiResponse | null> {
-  // ✅ Use cache if already loaded
   if (IDENTIFIER_TYPES_CACHE) {
     return { results: IDENTIFIER_TYPES_CACHE };
   }
@@ -50,7 +49,7 @@ export default async function getIdentifierTypes(): Promise<IdentifierTypeApiRes
     }
 
     const data: IdentifierTypeApiResponse = await response.json();
-    IDENTIFIER_TYPES_CACHE = data.results; // ✅ Cache only the array, not the whole response
+    IDENTIFIER_TYPES_CACHE = data.results; 
     return data;
   } catch (error) {
     console.error("Error getting identifier types:", error);
