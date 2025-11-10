@@ -4,14 +4,12 @@ import { redirectToLogin, getAuthHeaders } from '../auth/auth';
 
 // --- TYPE DEFINITIONS ---
 
-// Define the structure for a single Observation (Obs) item
 export interface Observation {
   uuid: string;
   display: string;
   concept: { uuid: string; display: string };
-  value: unknown; // Use 'any' here is often unavoidable due to varied data types (string, number, date, complex object)
-  // HOWEVER, for strictness, we'll keep it as 'unknown' or define it as a union type in a real-world scenario.
-  // For this context, we will use 'unknown' to replace the 'any' that *was* in the interface.
+  value: unknown; 
+ 
 }
 
 export interface Encounter {
@@ -21,16 +19,13 @@ export interface Encounter {
   encounterDatetime: string;
   location: { uuid: string; display: string };
   providers?: { uuid: string; display: string; encounterRole: string }[];
-  // Replaced 'any[]' with a specific array type or an empty object array if structure is complex
   obs?: Observation[]; 
 }
 
-// Interface for the standard OpenMRS list response
 interface EncounterApiResponse {
     results: Encounter[];
 }
 
-// --- SERVER ACTIONS ---
 
 /**
  * Fetch all encounters for a patient.
@@ -54,7 +49,7 @@ export async function getEncounters(patientUuid: string): Promise<Encounter[]> {
     
     const data: EncounterApiResponse = await res.json();
     return data.results || [];
-  } catch (error: unknown) { // Replaced 'catch (error)' with 'catch (error: unknown)'
+  } catch (error: unknown) { 
     if (error instanceof Error) {
         console.error('Error fetching encounters:', error.message);
     } else {
@@ -85,7 +80,7 @@ export async function createEncounter(patientUuid: string, encounter: Partial<En
 
     if (!res.ok) throw new Error(`Failed to create encounter: ${res.status}`);
     return await res.json();
-  } catch (error: unknown) { // Replaced 'catch (error)' with 'catch (error: unknown)'
+  } catch (error: unknown) { 
     if (error instanceof Error) {
         console.error('Error creating encounter:', error.message);
     } else {
@@ -109,14 +104,14 @@ export async function updateEncounter(encounterUuid: string, encounter: Partial<
 
   try {
     const res = await fetch(`${process.env.OPENMRS_API_URL}/encounter/${encounterUuid}`, {
-      method: 'POST', // OpenMRS uses POST for updates
+      method: 'POST', 
       headers: { ...headers, 'Content-Type': 'application/json' },
       body: JSON.stringify(encounter),
     });
 
     if (!res.ok) throw new Error(`Failed to update encounter: ${res.status}`);
     return await res.json();
-  } catch (error: unknown) { // Replaced 'catch (error)' with 'catch (error: unknown)'
+  } catch (error: unknown) { 
     if (error instanceof Error) {
         console.error('Error updating encounter:', error.message);
     } else {
@@ -147,7 +142,7 @@ export async function deleteEncounter(encounterUuid: string, reason: string = 'D
 
     if (!res.ok) throw new Error(`Failed to delete encounter: ${res.status}`);
     return true;
-  } catch (error: unknown) { // Replaced 'catch (error)' with 'catch (error: unknown)'
+  } catch (error: unknown) { 
     if (error instanceof Error) {
         console.error('Error deleting encounter:', error.message);
     } else {
