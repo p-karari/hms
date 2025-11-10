@@ -69,8 +69,6 @@ export async function searchPatients(query:string) {
 
 //registerpatients
 
-// This function will be cached by Next.js/React's cache utility. 
-// It will only execute the network requests once per deployment/cache cycle.
 const fetchConfigurationUuids = cache(async (): Promise<OpenMRSConfig> => {
     const baseUrl = process.env.OPENMRS_API_URL;
     const cookieStore = await cookies();
@@ -80,11 +78,10 @@ const fetchConfigurationUuids = cache(async (): Promise<OpenMRSConfig> => {
         throw new Error("Session invalid during configuration fetch.");
     }
 
-    // --- 1. Fetch Primary Identifier Type (e.g., 'OpenMRS ID') ---
     const identifierTypeUrl = `${baseUrl}/patientidentifiertype?q=OpenMRS%20ID&v=full`;
     const typeResponse = await fetch(identifierTypeUrl, {
         headers: { 'Accept': 'application/json', 'Cookie': `JSESSIONID=${jsessionid}` },
-        cache: 'force-cache' // Aggressively cache the config lookup
+        cache: 'force-cache' 
     });
     const typeData = await typeResponse.json();
     const primaryIdentifierTypeUuid = typeData.results?.[0]?.uuid;
@@ -92,12 +89,11 @@ const fetchConfigurationUuids = cache(async (): Promise<OpenMRSConfig> => {
         throw new Error("Could not find required 'OpenMRS ID' patient identifier type UUID.");
     }
 
-    // --- 2. Fetch Default Location (Assuming a location named 'Unknown' or 'Hospital') ---
-    // You might need to adjust the query ('Unknown') based on your OpenMRS setup
+    
     const locationUrl = `${baseUrl}/location?q=Unknown&v=full`; 
     const locationResponse = await fetch(locationUrl, {
         headers: { 'Accept': 'application/json', 'Cookie': `JSESSIONID=${jsessionid}` },
-        cache: 'force-cache' // Aggressively cache the config lookup
+        cache: 'force-cache' 
     });
     const locationData = await locationResponse.json();
     const locationUuid = locationData.results?.[0]?.uuid;
@@ -108,8 +104,6 @@ const fetchConfigurationUuids = cache(async (): Promise<OpenMRSConfig> => {
     return { primaryIdentifierTypeUuid, locationUuid };
 });
 
-
-// --- Register Patients Action (Regenerated) ---
 
 export async function registerpatients(formData: FormData) {
     const url = `${process.env.OPENMRS_API_URL}/patient`
@@ -122,10 +116,8 @@ export async function registerpatients(formData: FormData) {
     }
 
     try {
-        // Dynamically get and cache the required UUIDs
         const { primaryIdentifierTypeUuid, locationUuid } = await fetchConfigurationUuids();
         
-        // Construct the OpenMRS Registration Payload
         const identifierValue = formData.get('identifierValue') as string || `TEMP-${Date.now()}`;
         
         const patientData: NewPatientPayload = {
