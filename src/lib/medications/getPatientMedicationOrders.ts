@@ -1,7 +1,6 @@
 'use server';
 
 import { getAuthHeaders, redirectToLogin } from '@/lib/auth/auth';
-// Assuming the interface for the drug order is defined globally or here:
 export interface ConceptReference {
     uuid: string;
     display: string;
@@ -12,32 +11,28 @@ export interface DrugOrder {
     display: string;
     action: 'NEW' | 'REVISE' | 'DISCONTINUE' | 'RENEW';
     
-    // Core References
-    patient: ConceptReference; // 🎯 Required for Renew payload
+    patient: ConceptReference; 
     orderer: { uuid: string; display: string; person: { display: string } };
     concept: ConceptReference;
     drug: { uuid: string; display: string; strength: string };
 
-    // Timing
     dateActivated: string;
     dateStopped: string | null;
 
-    // Dosing and Quantities (MUST be ConceptReferences for UUID access)
     dose: number;
-    doseUnits: ConceptReference;       // 🎯 ADDED/CORRECTED for Renew payload
-    route: ConceptReference;           // 🎯 ADDED/CORRECTED for Renew payload
-    frequency: ConceptReference;       // 🎯 ADDED/CORRECTED for Renew payload
+    doseUnits: ConceptReference;      
+    route: ConceptReference;           
+    frequency: ConceptReference;       
     
     duration: number;
-    durationUnits: ConceptReference;   // 🎯 ADDED/CORRECTED for Renew payload
+    durationUnits: ConceptReference;   
     
     quantity: number;
-    quantityUnits: ConceptReference;   // 🎯 ADDED/CORRECTED for Renew payload
+    quantityUnits: ConceptReference;   
     
     instructions?: string;
 }
 
-// --- Helper for API Error Checking (Imitating your provided structure) ---
 async function handleApiError(response: Response) {
     if (response.status === 401 || response.status === 403) {
         redirectToLogin();
@@ -49,11 +44,7 @@ async function handleApiError(response: Response) {
     throw new Error(`Failed to fetch orders data: HTTP ${response.status}.`);
 }
 
-/**
- * Fetches the patient's entire drug order history (Active and Discontinued).
- * @param patientUuid The UUID of the patient whose orders are being fetched.
- * @returns A promise that resolves to an array of DrugOrder objects.
- */
+
 export async function getPatientMedicationOrders(patientUuid: string): Promise<DrugOrder[]> {
     if (!patientUuid) {
         console.error("Patient UUID is required to fetch medication orders.");
@@ -68,13 +59,12 @@ export async function getPatientMedicationOrders(patientUuid: string): Promise<D
         return [];
     }
     
-    // Confirmed working URL structure using full representation (v=full)
     const url = `${process.env.OPENMRS_API_URL}/order?t=drugorder&patient=${patientUuid}&v=full`;
 
     try {
         const response = await fetch(url, { 
             headers, 
-            cache: 'no-store' // Critical: Medication history must always be fresh
+            cache: 'no-store' 
         });
 
         if (!response.ok) {
@@ -82,7 +72,6 @@ export async function getPatientMedicationOrders(patientUuid: string): Promise<D
             return [];
         }
 
-        // We assume the API returns enough fields to match the DrugOrder interface
         const data: { results: DrugOrder[] } = await response.json();
         
         return data.results || [];
