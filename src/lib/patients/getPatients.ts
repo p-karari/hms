@@ -8,14 +8,9 @@ export interface Patient {
   gender: string;
   birthdate: string;
   identifiers: { identifier: string; identifierType: string }[];
-  // Add other fields you need
 }
 
-/**
- * Fetches all patients or optionally filtered by search query.
- * @param search Optional search string to filter patients by name or identifier
- * @param limit Optional number of patients to return (default 50)
- */
+
 export async function getPatients(search?: string, limit: number = 50): Promise<Patient[]> {
   let headers: Record<string, string>;
   try {
@@ -27,7 +22,7 @@ export async function getPatients(search?: string, limit: number = 50): Promise<
 
   try {
     const queryParams = new URLSearchParams();
-    queryParams.set('v', 'full'); // fetch full patient details
+    queryParams.set('v', 'full'); 
     queryParams.set('limit', limit.toString());
     if (search) queryParams.set('q', search);
 
