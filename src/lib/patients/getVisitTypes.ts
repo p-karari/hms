@@ -4,23 +4,17 @@ import { getAuthHeaders, redirectToLogin } from '../auth/auth';
 
 // --- TYPE DEFINITIONS ---
 
-// A simplified interface for a Coded Value (like Visit Type or Location)
 export interface CodedValue {
   uuid: string;
   display: string;
 }
 
-// 1. Interface matching the OpenMRS 'full' representation for a single Visit Type
 interface FullVisitType extends CodedValue {
     retired: boolean;
-    // The 'full' representation includes many other properties, but 'retired' is essential for filtering.
-    // Example: description, duration, patientCount, etc.
 }
 
-// 2. Interface for the overall API response structure
 interface VisitTypeApiResponse {
     results: FullVisitType[];
-    // Can include startIndex, size, totalCount, etc.
 }
 
 /**
@@ -46,10 +40,8 @@ export async function getVisitTypes(): Promise<CodedValue[]> {
       throw new Error(`Failed to fetch visit types: ${res.status} - ${errorText.substring(0, 100)}...`);
     }
 
-    // Explicitly type the parsed JSON data
     const data: VisitTypeApiResponse = await res.json();
     
-    // Replace (vt: any) with (vt: FullVisitType)
     const visitTypes: CodedValue[] = data.results
       .filter((vt: FullVisitType) => !vt.retired)
       .map((vt: FullVisitType) => ({
@@ -59,7 +51,7 @@ export async function getVisitTypes(): Promise<CodedValue[]> {
 
     return visitTypes;
 
-  } catch (error: unknown) { // Use unknown for safety
+  } catch (error: unknown) { 
     if (error instanceof Error) {
         console.error('Error fetching visit types:', error.message);
     } else {
