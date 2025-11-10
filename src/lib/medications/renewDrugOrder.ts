@@ -7,12 +7,11 @@ import { SessionContextType } from '../context/session-context';
 import { DOSING_TYPE } from '../config/openmrsConfig';
  
 
-// --- Interface for Incoming Form Data ---
 export interface RenewOrderData {
     patientUuid: string;
-    previousOrderUuid: string; // The UUID of the order being renewed/copied
-    duration: number; // The new duration for the refill
-    durationUnitsConceptUuid: string; // The UUID for the duration unit (e.g., 'Days')
+    previousOrderUuid: string; 
+    duration: number; 
+    durationUnitsConceptUuid: string; 
     conceptUuid: string; 
     drugUuid: string;
     dose: number;
@@ -23,7 +22,6 @@ export interface RenewOrderData {
     quantityUnitsConceptUuid: string;
 }
 
-// --- Helper for API Error Checking ---
 async function handleApiError(response: Response) {
     if (response.status === 401 || response.status === 403) {
         redirectToLogin();
@@ -34,18 +32,12 @@ async function handleApiError(response: Response) {
     throw new Error(`Failed to renew drug order: HTTP ${response.status}.`);
 }
 
-/**
- * Renews an expired drug order.
- * @param data - Order details, including the previous order UUID and new duration.
- * @param sessionData - Context data for the orderer/provider.
- * @returns A promise that resolves to the UUID of the newly created order.
- */
+
 export async function renewDrugOrder(data: RenewOrderData, sessionData: SessionContextType): Promise<string> {
     if (!sessionData.isAuthenticated || !sessionData.user.uuid) {
         throw new Error("User must be authenticated to renew an order.");
     }
 
-    // 1. Fetch Configuration UUIDs
     const [orderTypeUuid, careSettingUuid] = await Promise.all([
         getOrderTypeUuid('Drug Order'),
         getCareSettingUuid('Outpatient'), 
@@ -54,7 +46,6 @@ export async function renewDrugOrder(data: RenewOrderData, sessionData: SessionC
     const nowISO = new Date().toISOString();
     const ordererUuid = sessionData.user.uuid;
     
-    // 2. Construct the Payload
     const payload = {
         "type": "drugorder",
         "patient": data.patientUuid,
@@ -78,7 +69,6 @@ export async function renewDrugOrder(data: RenewOrderData, sessionData: SessionC
         "quantityUnits": data.quantityUnitsConceptUuid,
     };
 
-    // 3. Submit the POST Request
     let headers: Record<string, string>;
     try {
         headers = await getAuthHeaders();
