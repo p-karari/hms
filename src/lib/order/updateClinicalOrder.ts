@@ -4,21 +4,16 @@ import { getAuthHeaders } from '@/lib/auth/auth';
 import { getEncounterTypeUuid } from '../encounters/encounterType';
 import { getSessionLocation } from '../location/location';
 
-/**
- * Data required to discontinue an existing clinical order.
- */
+
 export interface DiscontinueOrderSubmissionData {
   patientUuid: string;
-  orderUuid: string; // The UUID of the existing order to discontinue
-  conceptUuid: string; // The concept UUID of the original order
-  orderType: 'testorder' | 'drugorder'; // The type of the original order
-  dateStopped?: string; // Optional date/time the order was stopped
+  orderUuid: string; 
+  conceptUuid: string; 
+  orderType: 'testorder' | 'drugorder'; 
+  dateStopped?: string; 
 }
 
-/**
- * Submits a clinical order action to DISCONTINUE an existing order.
- * This is done by creating an encounter that contains the 'DISCONTINUE' order action.
- */
+
 export async function discontinueClinicalOrder(
   submissionData: DiscontinueOrderSubmissionData,
 ): Promise<void> {
@@ -30,12 +25,10 @@ export async function discontinueClinicalOrder(
     dateStopped,
   } = submissionData;
 
-  // --- Validate required fields ---
   if (!patientUuid || !orderUuid || !conceptUuid || !orderType) {
     throw new Error('Missing required fields for order discontinuation.');
   }
 
-  // Use the same provider logic as your submitNewClinicalOrder
   const providerUuid = process.env.NEXT_PUBLIC_DEFAULT_PROVIDER_UUID;
   if (!providerUuid) {
     throw new Error(
@@ -44,28 +37,25 @@ export async function discontinueClinicalOrder(
   }
 
   try {
-    // Fetch helper data
     const [headers, encounterTypeUuid, sessionLocation] = await Promise.all([
       getAuthHeaders(),
-      getEncounterTypeUuid('Order'), // Still uses the 'Order' encounter type
+      getEncounterTypeUuid('Order'), 
       getSessionLocation(),
     ]);
 
-    // Construct encounter payload (OpenMRS expected structure)
     const payload = {
       encounterType: encounterTypeUuid,
       patient: patientUuid,
-      // Use dateStopped or current time for the encounter datetime
       encounterDatetime: dateStopped || new Date().toISOString(), 
       location: sessionLocation?.uuid,
       orders: [
         {
           type: orderType,
-          action: 'DISCONTINUE', // Key difference: The action is DISCONTINUE
-          previousOrder: orderUuid, // Key difference: Must link to the order being stopped
-          concept: conceptUuid, // Still required, must match the original order's concept
+          action: 'DISCONTINUE', 
+          previousOrder: orderUuid,
+          concept: conceptUuid, 
           orderer: providerUuid,
-          careSetting: 'OUTPATIENT', // Assuming the same care setting
+          careSetting: 'OUTPATIENT', 
         },
       ],
     };
