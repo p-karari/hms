@@ -4,79 +4,53 @@ import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-// --- New Type Definitions for Encounter Providers ---
 
-/**
- * Defines the role and provider for an encounter.
- */
 interface EncounterProvider {
-    provider: string;     // The Provider UUID
-    encounterRole: string; // The Encounter Role UUID (e.g., "Clinician")
+    provider: string;     
+    encounterRole: string; 
 }
 
-// --- Type Definitions for API Payloads and Responses ---
 
-/**
- * Defines the structure of an Observation (Obs) object for the OpenMRS API submission.
- * This is the core clinical data collected during an encounter.
- */
 export interface ObsPayload {
-    concept: string;     // UUID of the concept (the question or test)
-    value: unknown;          // The answer (e.g., number, string, concept UUID, date)
+    concept: string;     
+    value: unknown;          
     obsDatetime?: string;
     comment?: string;
     groupMembers?: ObsPayload[];
 }
 
-/**
- * Defines the complete structure required for creating a new clinical encounter
- * via the OpenMRS REST API POST /encounter endpoint.
- */
+
 export interface SubmitEncounterData {
-    patient: string;           // Patient UUID
-    encounterDatetime: string; // ISO-formatted date/time
-    encounterType: string;     // Encounter Type UUID
-    location: string;          // Location UUID
-    // 🎯 FIX: Replace 'provider: string' with 'encounterProviders' array
-    encounterProviders?: EncounterProvider[]; // ✅ Correct structure for REST API
-    visit?: string;            // Often required for modern OpenMRS encounters (ensure to send it from client)
+    patient: string;           
+    encounterDatetime: string; 
+    encounterType: string;     
+    location: string;         
+    encounterProviders?: EncounterProvider[]; 
+    visit?: string;            
     obs?: ObsPayload[];        
     orders?: string[];
 }
 
-// --- Utility function for handling authentication and redirects ---
 
-/**
- * Checks for JSESSIONID and handles redirection if authentication is missing.
- * @returns The value of the JSESSIONID cookie.
- * @throws {Error} if the cookie is missing and redirect is caught.
- */
 async function authenticateAndGetSessionId(): Promise<string> {
     const cookieStore = await cookies();
     const jsessionid = cookieStore.get('JSESSIONID');
     
     if (!jsessionid || !jsessionid.value) {
         cookieStore.delete('JSESSIONID');
-        // Note: You must ensure 'cookieStore' is available here if an error occurs.
-        // In the catch blocks below, we ensure to call 'await cookies()' if needed.
+
         redirect('/login');
     }
     return jsessionid.value;
 }
 
 
-// --- Action 1: getEncounterforms (Retrieves Form Definitions) ---
-
-/**
- * Fetches the list of form definitions available in OpenMRS.
- * @returns The JSON response containing the list of forms.
- */
 export async function getEncounterforms() {
     const url = `${process.env.OPENMRS_API_URL}/form?v=full`; 
     
     try {
         const jsessionidValue = await authenticateAndGetSessionId();
-        const cookieStore = await cookies(); // Used for deletion on 401/403
+        const cookieStore = await cookies(); 
 
         const response = await fetch(url, {
             method: 'GET',
@@ -109,19 +83,13 @@ export async function getEncounterforms() {
 }
 
 
-// --- Action 2: submitEncounter (Creates a New Encounter) ---
 
-/**
- * Submits clinical data to create a new encounter in OpenMRS.
- * @param encounterData - The structured data payload for the encounter.
- * @returns The JSON response of the newly created encounter.
- */
 export async function submitEncounter(encounterData: SubmitEncounterData) {
     const url = `${process.env.OPENMRS_API_URL}/encounter`;
     
     try {
         const jsessionidValue = await authenticateAndGetSessionId();
-        const cookieStore = await cookies(); // Used for deletion on 401/403
+        const cookieStore = await cookies(); 
 
         const response = await fetch(url, {
             method: 'POST',
