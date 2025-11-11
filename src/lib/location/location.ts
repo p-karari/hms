@@ -102,7 +102,6 @@ export async function setSessionLocation(formData: FormData) {
       );
     }
 
-    // Step 2: Immediately fetch updated session to confirm location was set
     const verifyResponse = await fetch(`${process.env.OPENMRS_API_URL}/session`, {
       headers: {
         Cookie: `JSESSIONID=${jsessionid}`,
@@ -152,7 +151,6 @@ export async function getSessionLocation(): Promise<CurrentSessionLocation | nul
 
     const data = await response.json();
 
-    // Case 1: sessionLocation is already present
     if (data.sessionLocation?.uuid) {
       return {
         uuid: data.sessionLocation.uuid,
@@ -160,7 +158,6 @@ export async function getSessionLocation(): Promise<CurrentSessionLocation | nul
       };
     }
 
-    // Case 2: Missing sessionLocation — try to re-fetch once
     console.warn("Session location missing — attempting to refresh session...");
     const verifyResponse = await fetch(`${process.env.OPENMRS_API_URL}/session`, {
       headers: {
@@ -180,7 +177,6 @@ export async function getSessionLocation(): Promise<CurrentSessionLocation | nul
       };
     }
 
-    // Case 3: Still missing after retry
     console.error("Session location still missing after verification.");
     return null;
   } catch (error) {
