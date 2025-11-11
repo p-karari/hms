@@ -5,19 +5,16 @@ import { getCareSettingUuid } from '../config/careSetting';
 import { getOrderTypeUuid } from '../config/orderType';
 import { SessionContextType } from '../context/session-context';
 import { DOSING_TYPE } from '../config/openmrsConfig';
-// import { SessionContextType } from '@/components/context/SessionContext';
-// import { getCareSettingUuid } from '@/config/careSetting';
-// import { getOrderTypeUuid } from '@/config/orderType';
-// import { DOSING_TYPE } from '@/lib/config/openmrsConfig'; 
+
 
 // --- Interface for Incoming Form Data ---
 export interface AmendOrderData {
     patientUuid: string;
-    previousOrderUuid: string; // The UUID of the order being amended/revised
-    instructions: string; // New instructions/reason for revision
+    previousOrderUuid: string; 
+    instructions: string; 
     conceptUuid: string; 
     drugUuid: string;
-    dose: number; // The NEW dose
+    dose: number; 
     doseUnitsConceptUuid: string;
     routeConceptUuid: string;
     frequencyConceptUuid: string;
@@ -38,18 +35,12 @@ async function handleApiError(response: Response) {
     throw new Error(`Failed to amend drug order: HTTP ${response.status}.`);
 }
 
-/**
- * Amends (revises) an existing active drug order.
- * @param data - Order details, including the active order UUID and revised fields.
- * @param sessionData - Context data for the orderer/provider.
- * @returns A promise that resolves to the UUID of the newly created (revised) order.
- */
+
 export async function amendDrugOrder(data: AmendOrderData, sessionData: SessionContextType): Promise<string> {
     if (!sessionData.isAuthenticated || !sessionData.user.uuid) {
         throw new Error("User must be authenticated to amend an order.");
     }
 
-    // 1. Fetch Configuration UUIDs
     const [orderTypeUuid, careSettingUuid] = await Promise.all([
         getOrderTypeUuid('Drug Order'),
         getCareSettingUuid('Outpatient'), 
@@ -58,11 +49,10 @@ export async function amendDrugOrder(data: AmendOrderData, sessionData: SessionC
     const nowISO = new Date().toISOString();
     const ordererUuid = sessionData.user.uuid;
     
-    // 2. Construct the Payload
     const payload = {
         "type": "drugorder",
         "patient": data.patientUuid,
-        "action": "REVISE", // Key difference: REVISE action
+        "action": "REVISE", 
         "previousOrder": data.previousOrderUuid,
         "orderer": ordererUuid,
         "careSetting": careSettingUuid,
@@ -73,7 +63,7 @@ export async function amendDrugOrder(data: AmendOrderData, sessionData: SessionC
         "concept": data.conceptUuid, 
         "drug": data.drugUuid, 
         "dosingType": DOSING_TYPE,
-        "dose": data.dose, // The revised value
+        "dose": data.dose, 
         "doseUnits": data.doseUnitsConceptUuid,
         "route": data.routeConceptUuid,
         "frequency": data.frequencyConceptUuid,
@@ -83,7 +73,6 @@ export async function amendDrugOrder(data: AmendOrderData, sessionData: SessionC
         "quantityUnits": data.quantityUnitsConceptUuid,
     };
 
-    // 3. Submit the POST Request
     let headers: Record<string, string>;
     try {
         headers = await getAuthHeaders();
