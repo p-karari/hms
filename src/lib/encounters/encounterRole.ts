@@ -4,20 +4,14 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
 
-/**
- * Fetches the UUID for a specific OpenMRS Encounter Role by its name.
- * @param roleName The name of the Encounter Role to search for (e.g., 'Clinician').
- * @returns The UUID of the first matching Encounter Role.
- */
+
 export async function getEncounterRoleUuid(roleName: string) {
-    // The OpenMRS API endpoint to search for Encounter Roles
-    // Using 'q=' for search and 'v=custom:(uuid)' for minimal data return
+
     const url = `${process.env.OPENMRS_API_URL}/encounterrole?q=${encodeURIComponent(roleName)}&v=custom:(uuid)`; 
     
     const cookieStore = await cookies();
     const jsessionid = cookieStore.get('JSESSIONID');
     
-    // Auth Check
     if (!jsessionid || !jsessionid.value) {
         cookieStore.delete('JSESSIONID');
         redirect('/login')
@@ -30,7 +24,6 @@ export async function getEncounterRoleUuid(roleName: string) {
                 'Accept': 'application/json',
                 'Cookie': `JSESSIONID=${jsessionid.value}`
             },
-            // Encounter Roles are typically static, but we use 'no-store' to respect authentication.
             cache: 'no-store' 
         });
 
