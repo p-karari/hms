@@ -2,29 +2,23 @@
 
 import { getAuthHeaders, redirectToLogin } from '@/lib/auth/auth'; 
 
-// --- Interface for New Immunization Submission (Updated for FHIR context) ---
-// Note the inclusion of necessary FHIR fields (lot, manufacturer, dose) 
-// and the required Encounter reference (visitUuid).
+
 export interface NewImmunizationSubmissionData {
     patientUuid: string;
-    vaccineConceptUuid: string; // The UUID of the vaccine administered
-    vaccineDisplay: string;     // The display name of the vaccinef
-    occurrenceDateTime: string; // Date and Time of administration (ISO format, e.g., 'YYYY-MM-DDThh:mm:ss.000Z')
+    vaccineConceptUuid: string; 
+    vaccineDisplay: string;     
+    occurrenceDateTime: string; 
     lotNumber: string;
-    expirationDate: string;     // Expiration Date (Date only, e.g., 'YYYY-MM-DD')
-    manufacturer: string;       // Manufacturer display name
-    doseNumber: number;         // Dose number in series (e.g., 1, 2, 3)
-    
-    // Context needed for FHIR references
-    visitUuid: string;          // The UUID of the current active Visit (used as Encounter reference)
-    locationUuid: string;       // Location UUID
-    practitionerUuid: string;   // The Practitioner UUID who administered/recorded it
+    expirationDate: string;     
+    manufacturer: string;       
+    doseNumber: number;         
+    visitUuid: string;          
+    locationUuid: string;       
+    practitionerUuid: string;   
 }
 
-// --- API Configuration ---
 const FHIR_IMMUNIZATION_URL = `${process.env.OPENMRS_API_URL_ALT}/Immunization`;
 
-// --- Helper for API Error Checking ---
 async function handleApiError(response: Response, source: string) {
     if (response.status === 401 || response.status === 403) {
         redirectToLogin();
@@ -36,13 +30,6 @@ async function handleApiError(response: Response, source: string) {
     throw new Error(`Failed to submit immunization: HTTP ${response.status}.`);
 }
 
-/**
- * Submits a new patient immunization record by creating a FHIR R4 Immunization resource.
- * Uses the confirmed **FHIR R4 API**: /ws/fhir2/R4/Immunization (POST)
- *
- * @param data The structured data payload for the new immunization.
- * @returns A promise that resolves when the immunization is successfully created.
- */
 export async function submitPatientImmunization(data: NewImmunizationSubmissionData): Promise<void> {
     const { 
         patientUuid, 
@@ -67,18 +54,15 @@ export async function submitPatientImmunization(data: NewImmunizationSubmissionD
         throw new Error("Authentication failed during immunization submission.");
     });
     
-    // FHIR references
     const patientReference = `Patient/${patientUuid}`;
-    const encounterReference = `Encounter/${visitUuid}`; // OpenMRS uses Visit UUID as Encounter reference
+    const encounterReference = `Encounter/${visitUuid}`;
     const locationReference = `Location/${locationUuid}`;
     const practitionerReference = `Practitioner/${practitionerUuid}`;
 
-    // 🔑 FHIR Payload construction based on the successful POST example you provided
     const fhirPayload = {
         resourceType: "Immunization",
         status: "completed",
         
-        // References
         patient: { type: "Patient", reference: patientReference },
         encounter: { type: "Encounter", reference: encounterReference }, 
         location: { type: "Location", reference: locationReference },
@@ -88,14 +72,14 @@ export async function submitPatientImmunization(data: NewImmunizationSubmissionD
         vaccineCode: {
             coding: [
                 {
-                    code: vaccineConceptUuid, // OpenMRS Concept UUID
+                    code: vaccineConceptUuid, 
                     display: vaccineDisplay,
                 },
             ],
         },
         manufacturer: { display: manufacturer || 'Unknown' },
         lotNumber: lotNumber,
-        expirationDate: expirationDate, // FHIR date format ('YYYY-MM-DD')
+        expirationDate: expirationDate, 
 
         performer: [
             {
@@ -117,7 +101,7 @@ export async function submitPatientImmunization(data: NewImmunizationSubmissionD
             method: 'POST',
             headers: { 
                 ...headers, 
-                'Content-Type': 'application/fhir+json' // Use specific FHIR content type
+                'Content-Type': 'application/fhir+json' 
             },
             body: JSON.stringify(fhirPayload)
         });
