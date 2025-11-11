@@ -4,19 +4,12 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
 
-/**
- * Fetches the UUID for a specific OpenMRS encounter type by its name.
- * @param encounterTypeName The name of the encounter type to search for (e.g., 'Vitals').
- * @returns The UUID of the first matching encounter type.
- */
 export async function getEncounterTypeUuid(encounterTypeName: string) {
-    // The OpenMRS API endpoint to search for encounter types
     const url = `${process.env.OPENMRS_API_URL}/encountertype?q=${encodeURIComponent(encounterTypeName)}&v=custom:(uuid)`; 
     
     const cookieStore = await cookies();
     const jsessionid = cookieStore.get('JSESSIONID');
     
-    // Auth Check
     if (!jsessionid || !jsessionid.value) {
         cookieStore.delete('JSESSIONID');
         redirect('/login')
