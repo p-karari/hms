@@ -1,4 +1,3 @@
-// 1. Define the necessary interfaces first
 'use client'
 import { createContext } from "react";
 
@@ -19,7 +18,7 @@ export interface SessionContextType {
     hasPrivilege: (key: string) => boolean;
     setSessionLocationContext: (location: { uuid: string; display: string }) => void;
 }
-// 2. Define the initial/default state object (matching the interface)
+
 export const DEFAULT_SESSION_CONTEXT: SessionContextType = {
     isAuthenticated: false,
     user: {
@@ -37,7 +36,6 @@ export const DEFAULT_SESSION_CONTEXT: SessionContextType = {
     
 }
 
-// 3. Initialize and export the context object using createContext()
 
 export const SessionContext = createContext<SessionContextType>(
     DEFAULT_SESSION_CONTEXT
