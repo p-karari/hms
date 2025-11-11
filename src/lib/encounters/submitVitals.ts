@@ -20,14 +20,10 @@ export interface SubmitEncounterData {
   obs: ObsPayload[];
 }
 
-/**
- * ✅ Submit vitals encounter to OpenMRS
- */
 export async function submitVitals(payload: SubmitEncounterData) {
   const baseUrl = process.env.OPENMRS_API_URL;
   const url = `${baseUrl}/encounter`;
 
-  // 🧩 Auth headers
   let headers: Record<string, string>;
   try {
     headers = await getAuthHeaders();
@@ -36,7 +32,6 @@ export async function submitVitals(payload: SubmitEncounterData) {
     return;
   }
 
-  // 🧠 Make sure session is active
   await getOpenMRSSessionDetails();
 
   try {
