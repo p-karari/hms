@@ -1,4 +1,3 @@
-// src/lib/encounters/createEncounter.ts
 'use server';
 
 import { getAuthHeaders } from '@/lib/auth/auth';
@@ -7,34 +6,28 @@ import { getEncounterRoleUuid } from './encounterRole';
 import { getCareSettingUuid } from '../config/careSetting';
 import { getPatientActiveVisit } from '../visits/getActiveVisit';
 import { SessionContextType } from '../context/session-context';
-// import { getProviderUuid } from '../config/provider';
 
 interface CreateEncounterOptions {
   patientUuid: string;
-  encounterTypeName: string; // e.g., "Drug Order", "Vitals"
+  encounterTypeName: string;
   sessionData: SessionContextType;
 }
 
-/**
- * Creates an encounter programmatically for a patient under their active visit.
- * If successful, returns the encounter UUID.
- */
+
 export async function createEncounter({ patientUuid, encounterTypeName, sessionData }: CreateEncounterOptions): Promise<string> {
   if (!sessionData.isAuthenticated || !sessionData.user.uuid) {
     throw new Error('User must be authenticated to create an encounter.');
   }
 
-  // 1️⃣ Ensure patient has an active visit
   const activeVisit = await getPatientActiveVisit(patientUuid);
   if (!activeVisit) {
     throw new Error('Cannot create encounter: Patient does not have an active visit.');
   }
 
-  // 2️⃣ Fetch dynamic UUIDs
   const [encounterTypeUuid, encounterRoleUuid] = await Promise.all([
     getEncounterTypeUuid(encounterTypeName),
-    getEncounterRoleUuid('Clinician'), // adjust if needed
-    getCareSettingUuid('Outpatient'),  // adjust for your workflow
+    getEncounterRoleUuid('Clinician'), 
+    getCareSettingUuid('Outpatient'), 
   ]);
 const ordererUuid = process.env.NEXT_PUBLIC_DEFAULT_PROVIDER_UUID;
 if (!ordererUuid) {
@@ -53,11 +46,10 @@ if (!ordererUuid) {
         encounterRole: encounterRoleUuid
       }
     ],
-    location: sessionData.sessionLocation?.uuid || '', // optional fallback
+    location: sessionData.sessionLocation?.uuid || '', 
     encounterDatetime: nowISO,
   };
 
-  // 3️⃣ Submit to OpenMRS
   let headers: Record<string, string>;
   try {
     headers = await getAuthHeaders();
