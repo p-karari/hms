@@ -2,7 +2,6 @@
 
 import { getAuthHeaders, redirectToLogin } from '@/lib/auth/auth'; 
 
-// --- Helper for API Error Checking ---
 async function handleApiError(response: Response) {
     if (response.status === 401 || response.status === 403) {
         redirectToLogin();
@@ -14,11 +13,7 @@ async function handleApiError(response: Response) {
     throw new Error(`Failed to fetch Order Type: HTTP ${response.status}.`);
 }
 
-/**
- * Dynamically fetches the UUID for a specific Order Type (e.g., 'Drug Order').
- * @param name The display name of the Order Type.
- * @returns The UUID of the Order Type.
- */
+
 export async function getOrderTypeUuid(name: string): Promise<string> {
     if (!name) {
         throw new Error("Order Type name is required for lookup.");
@@ -32,11 +27,10 @@ export async function getOrderTypeUuid(name: string): Promise<string> {
         throw new Error("Authentication required for config lookup.");
     }
 
-    // Standard OpenMRS endpoint for Order Types
     const url = `${process.env.OPENMRS_API_URL}/ordertype?q=${encodeURIComponent(name)}&v=custom:(uuid)`;
 
     try {
-        const response = await fetch(url, { headers, cache: 'force-cache' }); // Cache configuration UUIDs
+        const response = await fetch(url, { headers, cache: 'force-cache' }); 
 
         if (!response.ok) {
             await handleApiError(response);
