@@ -4,19 +4,13 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
 
-/**
- * Fetches the UUID for a specific OpenMRS concept by its name or partial name.
- * @param conceptName The name of the concept to search for (e.g., 'WEIGHT (KG)').
- * @returns The UUID of the first matching concept.
- */
+
 export async function getConceptUuid(conceptName: string) {
-    // The OpenMRS API endpoint to search for concepts
     const url = `${process.env.OPENMRS_API_URL}/concept?q=${encodeURIComponent(conceptName)}&v=custom:(uuid)`; 
     
     const cookieStore = await cookies();
     const jsessionid = cookieStore.get('JSESSIONID');
     
-    // Auth Check
     if (!jsessionid || !jsessionid.value) {
         cookieStore.delete('JSESSIONID');
         redirect('/login')
@@ -29,7 +23,6 @@ export async function getConceptUuid(conceptName: string) {
                 'Accept': 'application/json',
                 'Cookie': `JSESSIONID=${jsessionid.value}`
             },
-            // Concepts are typically static, but we use 'no-store' to respect authentication.
             cache: 'no-store' 
         });
 
