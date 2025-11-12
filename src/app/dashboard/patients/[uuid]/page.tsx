@@ -1,4 +1,3 @@
-// uuid/page.tsx (PatientDashboardPage)
 
 'use client';
 
@@ -9,16 +8,13 @@ import PatientDetails from '@/components/patients/PatientDetails';
 import PatientEncounters from '@/components/patients/PatientEncounters';
 import PatientVisits from '@/components/patients/PatientVisits';
 
-// import { Activity, AlertCircle } from 'lucide-react';
 import { getPatientActiveVisit } from '@/lib/visits/getActiveVisit';
 import { Visit } from '@/lib/patients/manageVisits';
 import { PatientDashboardProvider } from '@/components/context/patient-dashboard-context'; 
 
-// 💡 NEW IMPORT: The component containing all the summary cards
 import PatientCardSummaryView from '@/components/summary/PatientCardSummaryView';
 
 
-// --- TYPE DEFINITIONS (Unchanged) ---
 interface PatientContentProps {
   patientUuid: string;
   clinicalKey: string;
@@ -26,7 +22,6 @@ interface PatientContentProps {
   onActiveVisitChange?: (visit: Visit | null) => void; 
 }
 
-// --- Component Definitions ---
 
 const PlaceholderView: React.FC<{ title: string }> = ({ title }) => (
   <div className="text-sm">
@@ -35,9 +30,8 @@ const PlaceholderView: React.FC<{ title: string }> = ({ title }) => (
   </div>
 );
 
-// 💡 UPDATE: The '/' path now points to PatientCardSummaryView.
 const TabComponentMap: Record<string, React.FC<PatientContentProps>> = {
-  '/': PatientCardSummaryView, // <<<< DEFAULT VIEW IS THE NEW SUMMARY CARD VIEW
+  '/': PatientCardSummaryView,
   '/vitals': () => <PlaceholderView title="Vitals" />, 
   '/medications': () => <PlaceholderView title="Medications" />,
   '/results': () => <PlaceholderView title="Lab Results" />,

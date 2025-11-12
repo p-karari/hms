@@ -24,23 +24,6 @@ const getPreferredName = (person: PatientDetailsType['person']): string => {
   return `${person.names[0]?.givenName || ''} ${person.names[0]?.familyName || ''}`.trim();
 };
 
-// Helper to format an address into a multi-line display string
-// const formatAddress = (address: PatientDetailsType['person']['preferredAddress']): string => {
-//   if (!address) return 'No address details';
-  
-//   const parts = [
-//     address.address1, 
-//     address.address2, 
-//     address.cityVillage, 
-//     address.stateProvince, 
-//     address.country
-//   ].filter(p => p); // Filter out null/empty strings
-
-//   // Join the parts, excluding duplicates and keeping the most relevant ones.
-//   // For the display, a simple comma separation is often best.
-//   return parts.join(', ');
-// };
-
 const PatientDetails: React.FC<PatientDetailsProps> = ({
   patientUuid,
   activeVisit,
@@ -265,10 +248,10 @@ const PatientDetails: React.FC<PatientDetailsProps> = ({
                     <p className="text-gray-600 mb-1 text-xs">Address Line 1</p>
                     <p className="font-medium text-gray-900 text-sm">{preferredAddress.address1 || 'Not specified'}</p>
                   </div>
-                  <div>
+                  {/* <div>
                     <p className="text-gray-600 mb-1 text-xs">Address Line 2</p>
                     <p className="font-medium text-gray-900 text-sm">{preferredAddress.address2 || 'Not specified'}</p>
-                  </div>
+                  </div> */}
                   <div>
                     <p className="text-gray-600 mb-1 text-xs">City/Village</p>
                     <p className="font-medium text-gray-900 text-sm">{preferredAddress.cityVillage || 'Not specified'}</p>
