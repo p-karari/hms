@@ -2,23 +2,20 @@
 
 import { getAuthHeaders, redirectToLogin } from '@/lib/auth/auth'; 
 
-// --- Submission Data Interface ---
 export interface NewAppointmentData {
     patientUuid: string;
     
-    // Appointment details
-    startDatetime: string;      // ISO format, e.g., "YYYY-MM-DDTThh:mm:ssZ"
-    endDatetime: string;        // ISO format
+    startDatetime: string;      
+    endDatetime: string;        
     
-    serviceTypeUuid: string;    // UUID of the appointment type (e.g., General Consultation)
-    locationUuid: string;       // UUID of the clinic/location
-    providerUuid?: string;      // Optional: UUID of the specific provider/staff
+    serviceTypeUuid: string;    
+    locationUuid: string;      
+    providerUuid?: string;      
     
-    reason: string;             // Clinician notes or reason for the appointment
+    reason: string;             
 }
 
 
-// --- Helper for API Error Checking ---
 async function handleApiError(response: Response, source: string) {
     if (response.status === 401 || response.status === 403) {
         redirectToLogin();
@@ -31,11 +28,7 @@ async function handleApiError(response: Response, source: string) {
 }
 
 
-/**
- * Schedules a new appointment by posting the required details to the OpenMRS Appointment API.
- * * @param appointmentData The structured data payload for the new appointment.
- * @returns A promise that resolves when the appointment is successfully created.
- */
+
 export async function scheduleAppointment(appointmentData: NewAppointmentData): Promise<void> {
     const { 
         patientUuid, 
@@ -59,8 +52,6 @@ export async function scheduleAppointment(appointmentData: NewAppointmentData): 
         throw new Error("Authentication failed during appointment scheduling.");
     }
     
-    // --- Construct the Appointment Payload ---
-    // Note: The OpenMRS Appointment Scheduling API often uses 'appointmentType' for the service UUID.
     const payload = {
         patient: patientUuid,
         startDatetime: startDatetime,
@@ -69,14 +60,11 @@ export async function scheduleAppointment(appointmentData: NewAppointmentData): 
         appointmentType: serviceTypeUuid, 
         reason: reason || `Appointment for ${patientUuid}`,
         
-        // Only include provider if one was specifically selected
         ...(providerUuid && { provider: providerUuid }), 
 
-        // Default to a status like SCHEDULED or BOOKED
         status: "SCHEDULED",
     };
 
-    // The endpoint for creating a new appointment
     const url = `${process.env.OPENMRS_API_URL}/appointment`;
 
     try {
@@ -93,7 +81,6 @@ export async function scheduleAppointment(appointmentData: NewAppointmentData): 
             await handleApiError(response, "scheduleAppointment");
         }
         
-        // Successfully scheduled (response status 201 Created)
     } catch (error) {
         console.error("Final network error scheduling appointment:", error);
         throw new Error("Network or unexpected error during appointment scheduling.");
