@@ -5,15 +5,14 @@ import { getAuthHeaders, redirectToLogin } from '@/lib/auth/auth';
 // --- Interface for the payload sent to the API ---
 export interface NewAllergySubmissionData {
     patientUuid: string;
-    allergenUuid: string; // The UUID of the concept representing the allergen (e.g., Penicillin)
+    allergenUuid: string; 
     allergyType: 'DRUG' | 'FOOD' | 'ENVIRONMENTAL' | 'OTHER';
     severity: 'LOW' | 'MODERATE' | 'HIGH';
     
-    // An array of UUIDs for the observed reactions (e.g., Rash, Anaphylaxis concepts)
     reactionUuids: string[]; 
     
-    onsetDate?: string;  // Optional: Date the patient first experienced the reaction (ISO format)
-    comment?: string;    // Optional: Clinician notes
+    onsetDate?: string;  
+    comment?: string;    
 }
 
 // --- Helper for API Error Checking ---
@@ -28,12 +27,7 @@ async function handleApiError(response: Response, source: string) {
     throw new Error(`Failed to submit new allergy: HTTP ${response.status}.`);
 }
 
-/**
- * Submits a new allergy or Adverse Drug Reaction (ADR) record for a patient.
- *
- * @param submissionData The structured data payload for the new allergy.
- * @returns A promise that resolves when the allergy is successfully created.
- */
+
 export async function submitPatientAllergy(submissionData: NewAllergySubmissionData): Promise<void> {
     const { 
         patientUuid, 
@@ -57,26 +51,20 @@ export async function submitPatientAllergy(submissionData: NewAllergySubmissionD
         throw new Error("Authentication failed during allergy submission.");
     }
 
-    // --- Construct the OpenMRS AllergyIntolerance Payload ---
     const payload = {
         patient: patientUuid,
         allergen: {
-            // OpenMRS expects the UUID of the concept that is the allergen
             uuid: allergenUuid, 
-            allergenType: allergyType.toUpperCase() // DRUG, FOOD, ENVIRONMENTAL, etc.
+            allergenType: allergyType.toUpperCase() 
         },
-        // Reactions are often submitted as a list of concept UUIDs
         reactions: reactionUuids.map(uuid => ({
-            // If the reaction concept itself isn't provided, use the UUID array directly. 
-            // NOTE: The exact structure can vary; check your specific OpenMRS distribution's API documentation.
-            // Assuming a simple UUID array for concepts:
+
             reaction: uuid 
         })),
         severity: severity,
         onsetDate: onsetDate || null,
         comment: comment || null,
         
-        // Always set the status to ACTIVE upon creation
         status: 'ACTIVE', 
     };
 
@@ -96,7 +84,6 @@ export async function submitPatientAllergy(submissionData: NewAllergySubmissionD
             await handleApiError(response, "submitPatientAllergy");
         }
 
-        // Successfully submitted (response status 201 Created)
     } catch (error) {
         console.error("Final network error submitting allergy:", error);
         throw new Error("Network or unexpected error during allergy submission.");
