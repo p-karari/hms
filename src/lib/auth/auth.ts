@@ -76,7 +76,6 @@ export async function getAuthHeaders(): Promise<AuthHeaders>{
 }
 
 export async function redirectToLogin() {
-    // Ensure we obtain the cookie store in the current request context
     try {
         const cookieStore = await cookies();
         const jsessionid = cookieStore.get('JSESSIONID')?.value;
@@ -90,8 +89,7 @@ export async function redirectToLogin() {
         if (isRedirectError(err)) {
             throw err;
         }
-        // If cookies() cannot be accessed (no request context), just proceed to redirect.
-        // We avoid throwing here to prevent uncaught ReferenceError in build/SSR.
+
         console.warn('redirectToLogin: cookies() not available in this context.', err);
     }
     redirect('/login');
