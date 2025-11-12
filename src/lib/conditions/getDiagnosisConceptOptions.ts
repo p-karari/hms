@@ -2,19 +2,12 @@
 
 import { getAuthHeaders, redirectToLogin } from '@/lib/auth/auth';
 
-// --- Type for a diagnosis option ---
 export interface DiagnosisConceptOption {
     uuid: string;
     display: string;
 }
 
-/**
- * Searches OpenMRS concepts (diagnoses) by a partial name.
- * Returns matching concepts for live search/autocomplete inputs.
- *
- * @param searchTerm Partial string typed by the user
- * @returns Array of DiagnosisConceptOption objects
- */
+
 export async function getDiagnosisConceptOptions(searchTerm: string): Promise<DiagnosisConceptOption[]> {
     if (!searchTerm) return [];
 
