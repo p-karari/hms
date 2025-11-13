@@ -45,7 +45,7 @@ export default async function CreateUserPage() {
     return (
         <div className="py-10">
             {/* The props are passed here in the page component */}
-            <CreateUserForm roles={roles} /> 
+            <CreateUserForm roles={roles} onSuccess={() => {}} /> 
         </div>
     );
 }
