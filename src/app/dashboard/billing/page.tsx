@@ -1,85 +1,289 @@
-'use client';
+// app/billing/admin/page.tsx
+import { 
+  getAllDepartments, 
+  getAllBillableItems,
+  createBillableItem,
+  createDepartment,
 
-import React from 'react';
+} from '@/lib/billing/manageBillableServices';
+import { createFullBillableServiceAndConcept } from '@/lib/billing/createFullBillableServiceAndConcept';
+import { deleteBillableService, voidServicePrices } from '@/lib/billing/deleteBillableService';
+import { getServiceTypes } from '@/lib/billing/getServiceTypes';
+import { getPaymentModes } from '@/lib/billing/getPaymentModes';
+import { revalidatePath } from 'next/cache';
+import { editBillableService, updateServicePrices } from '@/lib/billing/editBillableServices';
+import UnifiedDashboard from '@/components/billing/BillingPageDashboard';
+import { getAllBillableServices } from '@/lib/billing/getAllBillableServices';
+import { editBillableItem, deleteBillableItem } from '@/lib/billing/manageBillableItems';
+import { editDepartment, deleteDepartment } from '@/lib/billing/manageDepartments';
 
-const UnderDevelopment = () => {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
-      {/* Background decorative elements */}
-      <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-blue-200 rounded-full opacity-20 blur-3xl"></div>
-      <div className="absolute bottom-1/3 right-1/4 w-24 h-24 bg-indigo-200 rounded-full opacity-30 blur-2xl"></div>
-      <div className="absolute top-1/3 right-1/3 w-16 h-16 bg-purple-200 rounded-full opacity-25 blur-xl"></div>
+export const dynamic = 'force-dynamic';
+
+export default async function BillingAdminPage() {
+  // Fetch all required data
+  const [departments, billableItems, services, serviceTypes, paymentModes] = await Promise.all([
+    getAllDepartments(),
+    getAllBillableItems(),
+    getAllBillableServices(),
+    getServiceTypes(), 
+    getPaymentModes(), 
+  ]);
+
+  // Define server actions
+  async function handleCreateItemAction(formData: FormData) {
+    'use server';
+    
+    const name = formData.get('name') as string;
+    const departmentId = parseInt(formData.get('departmentId') as string);
+    const initialPrice = parseFloat(formData.get('price') as string);
+    const description = formData.get('description') as string | null;
+    const creatorId = 1; // Replace with actual user ID mechanism
+
+    try {
+      await createBillableItem(name, departmentId, initialPrice, creatorId, description);
+      revalidatePath('/billing/admin');
+    } catch (error) {
+      console.error('Failed to create billable item:', error);
+      throw error;
+    }
+  }
+
+  async function handleCreateDepartmentAction(formData: FormData) {
+    'use server';
+
+    const name = formData.get('name') as string;
+    const description = formData.get('description') as string | null;
+    const creatorId = 1; // Replace with actual user ID mechanism
+
+    if (!name) {
+      console.error("Department name is required.");
+      return;
+    }
+
+    try {
+      await createDepartment(name, description, creatorId);
+      revalidatePath('/billing/admin');
+    } catch (error) {
+      console.error('Failed to create department:', error);
+      throw error;
+    }
+  }
+
+  async function handleCreateServiceAction(data: {
+    serviceName: string;
+    departmentId: number;
+    initialPrice: number;
+    shortName: string;
+    itemDescription: string | null;
+    serviceTypeId: number | null;
+    paymentModeId: number | null;
+  }) {
+    'use server';
+
+    const creatorId = 1; // Replace with actual user ID mechanism
+
+    try {
+      await createFullBillableServiceAndConcept(
+        data.serviceName,
+        data.departmentId,
+        data.initialPrice,
+        creatorId,
+        data.shortName,
+        data.itemDescription,
+        data.serviceTypeId,
+        data.paymentModeId,
+        'Default Price'
+      );
+      revalidatePath('/billing/admin');
+    } catch (error) {
+      console.error('Failed to create full billable service:', error);
+      throw new Error("Failed to create the service.");
+    }
+  }
+
+  async function handleEditServiceAction(data: {
+    service_id: number;
+    name?: string;
+    short_name?: string;
+    service_type?: number | null;
+    service_status?: string;
+    prices?: Array<{
+      price: number;
+      payment_mode?: number | null;
+      price_name?: string;
+    }>;
+  }) {
+    'use server';
+    
+    const changed_by = 1; // Replace with actual user ID mechanism
+    const creatorId = 1; // Same user for price updates
+
+    try {
+      // Update the service details
+      if (data.name || data.short_name || data.service_type !== undefined || data.service_status) {
+        await editBillableService({
+          service_id: data.service_id,
+          name: data.name,
+          short_name: data.short_name,
+          service_type: data.service_type,
+          service_status: data.service_status,
+          changed_by
+        });
+      }
       
-      <div className="relative max-w-2xl mx-auto text-center bg-white/80 backdrop-blur-sm rounded-3xl shadow-2xl border border-white/20 p-12">
-        {/* Animated construction icon */}
-        <div className="relative mb-8">
-          <div className="w-32 h-32 mx-auto bg-yellow-100 rounded-2xl flex items-center justify-center shadow-lg border border-yellow-200">
-            <span className="text-5xl" role="img" aria-label="Construction">
-              🚧
-            </span>
-          </div>
-          {/* Pulsing animation around the icon */}
-          <div className="absolute inset-0 w-32 h-32 mx-auto border-4 border-yellow-300 rounded-2xl animate-ping opacity-60"></div>
-        </div>
+      // Update prices if provided
+      if (data.prices && data.prices.length > 0) {
+        await updateServicePrices(data.service_id, data.prices, creatorId);
+      }
+      
+      revalidatePath('/billing/admin');
+    } catch (error) {
+      console.error('Failed to edit service:', error);
+      throw error;
+    }
+  }
 
-        {/* Content */}
-        <h1 className="text-4xl font-bold text-gray-900 mb-4 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-          Page Under Development
-        </h1>
-        
-        <p className="text-xl text-gray-600 mb-8 leading-relaxed max-w-md mx-auto">
-          We&apos;re working hard to bring you an enhanced experience. This section is currently being built and will be available soon.
-        </p>
+  async function handleDeleteServiceAction(data: {
+    service_id: number;
+    void_reason?: string;
+  }) {
+    'use server';
+    
+    const voided_by = 1; // Replace with actual user ID mechanism
 
-        {/* Feature preview cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 max-w-lg mx-auto">
-          <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
-            <div className="w-8 h-8 mx-auto mb-2 bg-blue-100 rounded-lg flex items-center justify-center">
-              <span className="text-blue-600">⚡</span>
-            </div>
-            <p className="text-sm font-medium text-blue-800">Fast Performance</p>
-          </div>
-          <div className="p-4 bg-green-50 rounded-xl border border-green-100">
-            <div className="w-8 h-8 mx-auto mb-2 bg-green-100 rounded-lg flex items-center justify-center">
-              <span className="text-green-600">🎯</span>
-            </div>
-            <p className="text-sm font-medium text-green-800">Precision Tools</p>
-          </div>
-          <div className="p-4 bg-purple-50 rounded-xl border border-purple-100">
-            <div className="w-8 h-8 mx-auto mb-2 bg-purple-100 rounded-lg flex items-center justify-center">
-              <span className="text-purple-600">🔒</span>
-            </div>
-            <p className="text-sm font-medium text-purple-800">Secure Access</p>
-          </div>
-        </div>
+    try {
+      await deleteBillableService({
+        service_id: data.service_id,
+        voided_by,
+        void_reason: data.void_reason
+      });
+      
+      // Also void related prices
+      await voidServicePrices(data.service_id, voided_by, data.void_reason);
+      
+      revalidatePath('/billing/admin');
+    } catch (error) {
+      console.error('Failed to delete service:', error);
+      throw error;
+    }
+  }
 
-        {/* Coming soon badge */}
-        <div className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-yellow-400 to-orange-400 text-white font-bold rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-          <span className="animate-pulse">✨</span>
-          COMING SOON
-          <span className="animate-pulse">✨</span>
-        </div>
+  // New handler for editing department
+  async function handleEditDepartmentAction(data: {
+    department_id: number;
+    name?: string;
+    description?: string | null;
+  }) {
+    'use server';
+    
+    const changed_by = 1; // Replace with actual user ID mechanism
 
-        {/* Progress indicator */}
-        <div className="mt-8 max-w-md mx-auto">
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div className="bg-gradient-to-r from-blue-500 to-indigo-500 h-2 rounded-full w-3/4 animate-pulse"></div>
-          </div>
-          <p className="text-sm text-gray-500 mt-2">Development in progress • 75% complete</p>
-        </div>
+    try {
+      await editDepartment({
+        department_id: data.department_id,
+        name: data.name,
+        description: data.description,
+        changed_by
+      });
+      revalidatePath('/billing/admin');
+    } catch (error) {
+      console.error('Failed to edit department:', error);
+      throw error;
+    }
+  }
 
-        {/* Contact info */}
-        <div className="mt-8 pt-6 border-t border-gray-200">
-          <p className="text-sm text-gray-500">
-            Need immediate assistance?{' '}
-            <a href="/contact" className="text-blue-600 hover:text-blue-700 font-medium underline">
-              Contact our support team
-            </a>
-          </p>
-        </div>
-      </div>
-    </div>
+  // New handler for deleting department
+  async function handleDeleteDepartmentAction(data: {
+    department_id: number;
+    retire_reason?: string;
+  }) {
+    'use server';
+    
+    const retired_by = 1; // Replace with actual user ID mechanism
+
+    try {
+      await deleteDepartment({
+        department_id: data.department_id,
+        retired_by,
+        retire_reason: data.retire_reason
+      });
+      revalidatePath('/billing/admin');
+    } catch (error) {
+      console.error('Failed to delete department:', error);
+      throw error;
+    }
+  }
+
+  // New handler for editing billable item
+  async function handleEditItemAction(data: {
+    item_id: number;
+    name?: string;
+    description?: string | null;
+    department_id?: number;
+    prices?: Array<{
+      price: number;
+      payment_mode?: number | null;
+      price_name?: string;
+    }>;
+  }) {
+    'use server';
+    
+    const changed_by = 1; // Replace with actual user ID mechanism
+
+    try {
+      await editBillableItem({
+        item_id: data.item_id,
+        name: data.name,
+        description: data.description,
+        department_id: data.department_id,
+        changed_by,
+        prices: data.prices
+      });
+      revalidatePath('/billing/admin');
+    } catch (error) {
+      console.error('Failed to edit billable item:', error);
+      throw error;
+    }
+  }
+
+  // New handler for deleting billable item
+  async function handleDeleteItemAction(data: {
+    item_id: number;
+    retire_reason?: string;
+  }) {
+    'use server';
+    
+    const retired_by = 1; // Replace with actual user ID mechanism
+
+    try {
+      await deleteBillableItem({
+        item_id: data.item_id,
+        retired_by,
+        retire_reason: data.retire_reason
+      });
+      revalidatePath('/billing/admin');
+    } catch (error) {
+      console.error('Failed to delete billable item:', error);
+      throw error;
+    }
+  }
+
+  return (
+    <UnifiedDashboard
+      departments={departments}
+      services={services}
+      billableItems={billableItems}
+      serviceTypes={serviceTypes}
+      paymentModes={paymentModes}
+      handleCreateItemAction={handleCreateItemAction}
+      handleCreateDepartmentAction={handleCreateDepartmentAction}
+      handleCreateServiceAction={handleCreateServiceAction}
+      handleEditServiceAction={handleEditServiceAction}
+      handleDeleteServiceAction={handleDeleteServiceAction}
+      handleEditDepartmentAction={handleEditDepartmentAction}
+      handleDeleteDepartmentAction={handleDeleteDepartmentAction}
+      handleEditItemAction={handleEditItemAction}
+      handleDeleteItemAction={handleDeleteItemAction}
+    />
   );
-};
-
-export default UnderDevelopment;
+}
