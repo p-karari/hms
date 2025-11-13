@@ -1,85 +1,153 @@
+// app/locations/page.tsx
 'use client';
 
-import React from 'react';
+import { useState, useEffect, useTransition } from 'react';
+import { Location, getAllLocations, createLocation, updateLocation, retireLocation } from '@/lib/location/manageLocations';
+import LocationForm, { LocationFormData } from '@/components/locations/LocationForm';
+import LocationTable from '@/components/locations/LocationsTable';
 
-const UnderDevelopment = () => {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
-      {/* Background decorative elements */}
-      <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-blue-200 rounded-full opacity-20 blur-3xl"></div>
-      <div className="absolute bottom-1/3 right-1/4 w-24 h-24 bg-indigo-200 rounded-full opacity-30 blur-2xl"></div>
-      <div className="absolute top-1/3 right-1/3 w-16 h-16 bg-purple-200 rounded-full opacity-25 blur-xl"></div>
+
+// Assuming a default user ID for mandatory creator/changed_by fields
+const DEFAULT_CREATOR_ID = 1;
+const DEFAULT_CHANGED_BY_ID = 1;
+
+export default function LocationPage() {
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [isPending, startTransition] = useTransition();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // State for form management
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingLocation, setEditingLocation] = useState<Location | null>(null);
+
+  // --- Data Fetching ---
+  const fetchLocations = () => {
+    setLoading(true);
+    setError(null);
+    startTransition(async () => {
+      try {
+        const data = await getAllLocations();
+        setLocations(data);
+      } catch (err) {
+        setError('Failed to fetch locations.');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    });
+  };
+
+  useEffect(() => {
+    fetchLocations();
+  }, []);
+
+  // --- CRUD Handlers ---
+  
+  // FIXED: Accepts LocationFormData which is the data directly from the form
+  const handleSave = async (data: LocationFormData) => {
+    try {
+      if (editingLocation) {
+        // UPDATE operation
+        // Must supply mandatory fields: location_id, name, creator, retired (unchanged)
+        // and tracking fields: changed_by, date_changed
+        const success = await updateLocation({
+          ...data,
+          location_id: editingLocation.location_id!,
+          // Mandatory fields needed for the type definition (though they aren't changing)
+          creator: editingLocation.creator, 
+          // Tracking field needed for the action
+          changed_by: DEFAULT_CHANGED_BY_ID, 
+        });
+        if (!success) throw new Error('Update failed.');
+      } else {
+        // CREATE operation
+        // Must supply mandatory fields: name, creator, retired, uuid, date_created
+        const newLocationData: Omit<Location, 'location_id'> = {
+          ...data,
+          creator: DEFAULT_CREATOR_ID, // Inject the mandatory creator ID
+        };
+        await createLocation(newLocationData);
+      }
       
-      <div className="relative max-w-2xl mx-auto text-center bg-white/80 backdrop-blur-sm rounded-3xl shadow-2xl border border-white/20 p-12">
-        {/* Animated construction icon */}
-        <div className="relative mb-8">
-          <div className="w-32 h-32 mx-auto bg-yellow-100 rounded-2xl flex items-center justify-center shadow-lg border border-yellow-200">
-            <span className="text-5xl" role="img" aria-label="Construction">
-              🚧
-            </span>
-          </div>
-          {/* Pulsing animation around the icon */}
-          <div className="absolute inset-0 w-32 h-32 mx-auto border-4 border-yellow-300 rounded-2xl animate-ping opacity-60"></div>
-        </div>
+      // Close form and refresh data
+      setIsFormOpen(false);
+      setEditingLocation(null);
+      fetchLocations(); 
+    } catch (err) {
+      setError(`Failed to save location: ${err instanceof Error ? err.message : String(err)}`);
+      console.error(err);
+    }
+  };
 
-        {/* Content */}
-        <h1 className="text-4xl font-bold text-gray-900 mb-4 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-          Page Under Development
-        </h1>
-        
-        <p className="text-xl text-gray-600 mb-8 leading-relaxed max-w-md mx-auto">
-          We&apos;re working hard to bring you an enhanced experience. This section is currently being built and will be available soon.
-        </p>
+  const handleEdit = (location: Location) => {
+    setEditingLocation(location);
+    setIsFormOpen(true);
+  };
 
-        {/* Feature preview cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 max-w-lg mx-auto">
-          <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
-            <div className="w-8 h-8 mx-auto mb-2 bg-blue-100 rounded-lg flex items-center justify-center">
-              <span className="text-blue-600">⚡</span>
-            </div>
-            <p className="text-sm font-medium text-blue-800">Fast Performance</p>
-          </div>
-          <div className="p-4 bg-green-50 rounded-xl border border-green-100">
-            <div className="w-8 h-8 mx-auto mb-2 bg-green-100 rounded-lg flex items-center justify-center">
-              <span className="text-green-600">🎯</span>
-            </div>
-            <p className="text-sm font-medium text-green-800">Precision Tools</p>
-          </div>
-          <div className="p-4 bg-purple-50 rounded-xl border border-purple-100">
-            <div className="w-8 h-8 mx-auto mb-2 bg-purple-100 rounded-lg flex items-center justify-center">
-              <span className="text-purple-600">🔒</span>
-            </div>
-            <p className="text-sm font-medium text-purple-800">Secure Access</p>
-          </div>
-        </div>
+  const handleRetire = async (location_id: number) => {
+    if (window.confirm('Are you sure you want to retire this location?')) {
+      try {
+        const success = await retireLocation(location_id, DEFAULT_CHANGED_BY_ID, "User retired location from UI");
+        if (success) {
+          fetchLocations(); // Refresh the list
+        } else {
+          throw new Error('Retirement failed.');
+        }
+      } catch (err) {
+        setError('Failed to retire location.');
+        console.error(err);
+      }
+    }
+  };
 
-        {/* Coming soon badge */}
-        <div className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-yellow-400 to-orange-400 text-white font-bold rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-          <span className="animate-pulse">✨</span>
-          COMING SOON
-          <span className="animate-pulse">✨</span>
+  return (
+    <div className="p-8">
+      <h1 className="text-3xl font-bold mb-6">🏥 Location Management</h1>
+      
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+          {error}
         </div>
+      )}
 
-        {/* Progress indicator */}
-        <div className="mt-8 max-w-md mx-auto">
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div className="bg-gradient-to-r from-blue-500 to-indigo-500 h-2 rounded-full w-3/4 animate-pulse"></div>
-          </div>
-          <p className="text-sm text-gray-500 mt-2">Development in progress • 75% complete</p>
-        </div>
-
-        {/* Contact info */}
-        <div className="mt-8 pt-6 border-t border-gray-200">
-          <p className="text-sm text-gray-500">
-            Need immediate assistance?{' '}
-            <a href="/contact" className="text-blue-600 hover:text-blue-700 font-medium underline">
-              Contact our support team
-            </a>
-          </p>
-        </div>
+      {/* Action Buttons */}
+      <div className="flex justify-end mb-4">
+        <button 
+          onClick={() => { setEditingLocation(null); setIsFormOpen(true); }}
+          className="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 transition-colors"
+        >
+          + Add New Location
+        </button>
       </div>
+
+      {/* Location List */}
+      <div className="bg-white p-6 rounded-lg shadow-xl">
+        <h2 className="text-2xl font-semibold mb-4">Active Locations</h2>
+        {(loading || isPending) ? (
+          <p>Loading locations...</p>
+        ) : locations.length === 0 ? (
+          <p>No active locations found.</p>
+        ) : (
+          <LocationTable 
+            locations={locations} 
+            onEdit={handleEdit}
+            onRetire={handleRetire}
+          />
+        )}
+      </div>
+
+      {/* Form Modal/Section */}
+      {isFormOpen && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex justify-center items-center z-50">
+          <LocationForm
+            initialData={editingLocation}
+            onSave={handleSave} // Now expects LocationFormData
+            onCancel={() => { setIsFormOpen(false); setEditingLocation(null); }}
+            isSaving={isPending}
+          />
+        </div>
+      )}
     </div>
   );
-};
-
-export default UnderDevelopment;
+}
