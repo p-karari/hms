@@ -3,18 +3,11 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { PatientSearchInput } from '@/components/patients/PatietnsSearch'; 
 import ActiveVisitDashboard from '@/components/patients/PatientList'; 
 
 const PatientsListPage: React.FC = () => {
   const [currentQuery, setCurrentQuery] = useState<string>('');
-  const [isSearching, setIsSearching] = useState(false); 
 
-  const handleSearchSubmit = (query: string) => {
-    setIsSearching(true);
-    setCurrentQuery(query);
-    setTimeout(() => setIsSearching(false), 500);
-  };
   
   const getDisplayMessage = () => {
       if (currentQuery.trim() === '') {
@@ -38,7 +31,6 @@ const PatientsListPage: React.FC = () => {
       </div>
 
       {/* Search Input Area */}
-      <PatientSearchInput onSearch={handleSearchSubmit} isSearching={isSearching} />
 
       {/* Status Message */}
       <div className="text-sm text-gray-600">
