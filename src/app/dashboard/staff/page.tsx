@@ -1,85 +1,199 @@
+// app/dashboard/admin/users/page.tsx
 'use client';
 
-import React from 'react';
+import { useState, useEffect, useTransition } from 'react';
+import { Loader2, UserPlus, AlertTriangle, XCircle, Users, Shield, RefreshCw } from 'lucide-react';
+import { getAllUsers, ManagedUser } from '@/lib/users/fetchUsers';
+import { RoleOption } from '@/components/users/GetRoles';
+import { fetchAllRolesForForm } from '@/lib/openmrs-api/metadata';
+import UserTable from '@/components/users/UserTable';
+import { CreateUserForm } from '@/components/users/CreateUserForm';
+import { EditUserForm } from '@/components/users/EditUserForm';
 
-const UnderDevelopment = () => {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
-      {/* Background decorative elements */}
-      <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-blue-200 rounded-full opacity-20 blur-3xl"></div>
-      <div className="absolute bottom-1/3 right-1/4 w-24 h-24 bg-indigo-200 rounded-full opacity-30 blur-2xl"></div>
-      <div className="absolute top-1/3 right-1/3 w-16 h-16 bg-purple-200 rounded-full opacity-25 blur-xl"></div>
-      
-      <div className="relative max-w-2xl mx-auto text-center bg-white/80 backdrop-blur-sm rounded-3xl shadow-2xl border border-white/20 p-12">
-        {/* Animated construction icon */}
-        <div className="relative mb-8">
-          <div className="w-32 h-32 mx-auto bg-yellow-100 rounded-2xl flex items-center justify-center shadow-lg border border-yellow-200">
-            <span className="text-5xl" role="img" aria-label="Construction">
-              🚧
-            </span>
-          </div>
-          {/* Pulsing animation around the icon */}
-          <div className="absolute inset-0 w-32 h-32 mx-auto border-4 border-yellow-300 rounded-2xl animate-ping opacity-60"></div>
-        </div>
+// Define state for the forms/modals
+type FormMode = 'create' | 'edit' | null;
 
-        {/* Content */}
-        <h1 className="text-4xl font-bold text-gray-900 mb-4 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-          Page Under Development
-        </h1>
-        
-        <p className="text-xl text-gray-600 mb-8 leading-relaxed max-w-md mx-auto">
-          We&apos;re working hard to bring you an enhanced experience. This section is currently being built and will be available soon.
-        </p>
+export default function UserManagementPage() {
+    const [users, setUsers] = useState<ManagedUser[]>([]);
+    const [roles, setRoles] = useState<RoleOption[]>([]);
+    const [isPending, startTransition] = useTransition();
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    
+    const [formMode, setFormMode] = useState<FormMode>(null);
+    const [editingUser, setEditingUser] = useState<ManagedUser | null>(null);
 
-        {/* Feature preview cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 max-w-lg mx-auto">
-          <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
-            <div className="w-8 h-8 mx-auto mb-2 bg-blue-100 rounded-lg flex items-center justify-center">
-              <span className="text-blue-600">⚡</span>
+    // --- Data Fetching ---
+    const fetchAllData = () => {
+        setLoading(true);
+        setError(null);
+        startTransition(async () => {
+            try {
+                // Fetch Users
+                const userList = await getAllUsers();
+                setUsers(userList);
+
+                // Fetch Roles (if not already fetched or if needed for form)
+                if (roles.length === 0) {
+                    const roleList = await fetchAllRolesForForm();
+                    setRoles(roleList);
+                }
+
+            } catch (err: any) {
+                setError(`Failed to load data: ${err.message || String(err)}`);
+                console.error(err);
+            } finally {
+                setLoading(false);
+            }
+        });
+    };
+
+    useEffect(() => {
+        fetchAllData();
+    }, []);
+
+    // --- Modal Handlers ---
+    const handleOpenCreate = () => {
+        setEditingUser(null);
+        setFormMode('create');
+    };
+
+    const handleOpenEdit = (user: ManagedUser) => {
+        setEditingUser(user);
+        setFormMode('edit');
+    };
+
+    const handleClose = () => {
+        setEditingUser(null);
+        setFormMode(null);
+    };
+
+    const handleSuccess = (message: string) => {
+        // Close modal and refresh data after success
+        handleClose();
+        alert(message); // Simple alert for confirmation
+        fetchAllData();
+    };
+
+    return (
+        <div className="min-h-screen bg-gray-50 p-6">
+            {/* Header */}
+            <div className="bg-white border-b border-gray-200 px-6 py-4 rounded-lg mb-6">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-2xl font-semibold text-gray-900 flex items-center gap-2">
+                            <Users className="h-6 w-6 text-blue-600" />
+                            Staff & User Management
+                        </h1>
+                        <div className="flex items-center gap-2 mt-1 text-sm text-gray-600">
+                            <Shield className="h-4 w-4" />
+                            <span>Manage user accounts, roles, and permissions</span>
+                        </div>
+                    </div>
+                    <button
+                        onClick={fetchAllData}
+                        className="flex items-center gap-2 px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition text-sm font-medium"
+                    >
+                        <RefreshCw className="h-4 w-4" />
+                        Refresh
+                    </button>
+                </div>
             </div>
-            <p className="text-sm font-medium text-blue-800">Fast Performance</p>
-          </div>
-          <div className="p-4 bg-green-50 rounded-xl border border-green-100">
-            <div className="w-8 h-8 mx-auto mb-2 bg-green-100 rounded-lg flex items-center justify-center">
-              <span className="text-green-600">🎯</span>
+
+            {/* Main Content */}
+            <div className="space-y-6">
+                {/* Error Message Display */}
+                {error && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                        <div className="flex items-center gap-3">
+                            <AlertTriangle className="h-5 w-5 text-red-500 flex-shrink-0" />
+                            <div>
+                                <p className="text-sm font-medium text-red-800">{error}</p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Action Bar */}
+                <div className="flex items-center justify-between">
+                    <div className="text-sm text-gray-600">
+                        <span className="font-medium">{users.length}</span> user{users.length !== 1 ? 's' : ''} in system
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <button 
+                            onClick={handleOpenCreate}
+                            disabled={roles.length === 0}
+                            className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            <UserPlus className="h-5 w-5" />
+                            Add New User
+                        </button>
+                    </div>
+                </div>
+
+                {/* User List Table */}
+                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                    {loading || isPending ? (
+                        <div className="py-12 flex flex-col items-center justify-center">
+                            <Loader2 className="w-8 h-8 animate-spin text-blue-600 mb-3" />
+                            <p className="text-gray-600">Loading user data...</p>
+                        </div>
+                    ) : users.length === 0 ? (
+                        <div className="text-center p-12">
+                            <div className="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                                <Users className="h-8 w-8 text-gray-400" />
+                            </div>
+                            <p className="text-lg font-medium text-gray-900 mb-1">No users found</p>
+                            <p className="text-sm text-gray-600">Get started by adding your first user</p>
+                        </div>
+                    ) : (
+                        <UserTable 
+                            users={users} 
+                            onEdit={handleOpenEdit} 
+                            onSuccess={handleSuccess}
+                        />
+                    )}
+                </div>
             </div>
-            <p className="text-sm font-medium text-green-800">Precision Tools</p>
-          </div>
-          <div className="p-4 bg-purple-50 rounded-xl border border-purple-100">
-            <div className="w-8 h-8 mx-auto mb-2 bg-purple-100 rounded-lg flex items-center justify-center">
-              <span className="text-purple-600">🔒</span>
-            </div>
-            <p className="text-sm font-medium text-purple-800">Secure Access</p>
-          </div>
-        </div>
 
-        {/* Coming soon badge */}
-        <div className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-yellow-400 to-orange-400 text-white font-bold rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-          <span className="animate-pulse">✨</span>
-          COMING SOON
-          <span className="animate-pulse">✨</span>
-        </div>
+            {/* --- Modals for Create and Edit --- */}
+            {(formMode === 'create' || formMode === 'edit') && (
+                <div className="fixed inset-0 bg-gray-900 bg-opacity-50 flex justify-center items-center z-50 p-4 overflow-auto">
+                    <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+                        
+                        {/* Modal Header */}
+                        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                            <h2 className="text-xl font-semibold text-gray-900">
+                                {formMode === 'create' ? 'Create New User' : 'Edit User'}
+                            </h2>
+                            <button 
+                                onClick={handleClose}
+                                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                            >
+                                <XCircle className="w-6 h-6 text-gray-400 hover:text-gray-600" />
+                            </button>
+                        </div>
 
-        {/* Progress indicator */}
-        <div className="mt-8 max-w-md mx-auto">
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div className="bg-gradient-to-r from-blue-500 to-indigo-500 h-2 rounded-full w-3/4 animate-pulse"></div>
-          </div>
-          <p className="text-sm text-gray-500 mt-2">Development in progress • 75% complete</p>
-        </div>
+                        {/* Modal Content */}
+                        <div className="p-6 overflow-y-auto">
+                            {formMode === 'create' && (
+                                <CreateUserForm 
+                                    roles={roles} 
+                                    onSuccess={handleSuccess}
+                                />
+                            )}
 
-        {/* Contact info */}
-        <div className="mt-8 pt-6 border-t border-gray-200">
-          <p className="text-sm text-gray-500">
-            Need immediate assistance?{' '}
-            <a href="/contact" className="text-blue-600 hover:text-blue-700 font-medium underline">
-              Contact our support team
-            </a>
-          </p>
+                            {formMode === 'edit' && editingUser && (
+                                <EditUserForm
+                                    user={editingUser}
+                                    allRoles={roles}
+                                    onSuccess={handleSuccess}
+                                />
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
-      </div>
-    </div>
-  );
-};
-
-export default UnderDevelopment;
+    );
+}
