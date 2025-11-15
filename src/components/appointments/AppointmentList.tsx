@@ -3,30 +3,24 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Loader2, AlertTriangle, Calendar, Clock, MapPin, User, XCircle, CheckCircle } from 'lucide-react';
 
-// --- Import Necessary Actions and Types ---
 import { getPatientAppointments, Appointment } from '@/lib/appointments/getPatientAppointments';
-import { formatDate } from '@/lib/utils/utils'; // Reusing your utility function
+import { formatDate } from '@/lib/utils/utils'; 
 
 interface AppointmentListProps {
     patientUuid: string;
-    refreshKey: number; // To force refresh after a new appointment is booked or status changes
+    refreshKey: number; 
 }
 
-/**
- * Displays the patient's schedule, categorized into Upcoming and Past appointments.
- */
 export default function AppointmentList({ patientUuid, refreshKey }: AppointmentListProps) {
     const [allAppointments, setAllAppointments] = useState<Appointment[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // --- Data Fetching ---
     const fetchAppointments = useCallback(async () => {
         setIsLoading(true);
         setError(null);
         try {
             const data = await getPatientAppointments(patientUuid);
-            // Sort chronologically (oldest first)
             data.sort((a, b) => new Date(a.startDatetime).getTime() - new Date(b.startDatetime).getTime());
             setAllAppointments(data);
         } catch (e) {
@@ -38,12 +32,10 @@ export default function AppointmentList({ patientUuid, refreshKey }: Appointment
         }
     }, [patientUuid]);
 
-    // Re-fetch data whenever the refreshKey changes
     useEffect(() => {
         fetchAppointments();
     }, [fetchAppointments, refreshKey]);
     
-    // --- Categorization Logic ---
     const { upcomingAppointments, pastAppointments } = useMemo(() => {
         const now = new Date();
         const upcoming: Appointment[] = [];
@@ -57,13 +49,11 @@ export default function AppointmentList({ patientUuid, refreshKey }: Appointment
             }
         }
         
-        // Reverse past list to show most recent first
         past.reverse(); 
 
         return { upcomingAppointments: upcoming, pastAppointments: past };
     }, [allAppointments]);
 
-    // --- Utility Functions for Display ---
     const getStatusStyles = (status: string) => {
         switch (status.toUpperCase()) {
             case 'SCHEDULED':
@@ -95,7 +85,6 @@ export default function AppointmentList({ patientUuid, refreshKey }: Appointment
                 <div className="space-y-4">
                     {appointments.map((appt) => {
                         const { icon, textClass, text } = getStatusStyles(appt.status);
-                        // const startTime = new Date(appt.startDatetime);
                         const endTime = new Date(appt.endDatetime);
                         
                         return (
@@ -113,7 +102,6 @@ export default function AppointmentList({ patientUuid, refreshKey }: Appointment
                                     <div className="text-sm text-gray-600 space-y-1 ml-8">
                                         <p className="flex items-center">
                                             <Clock className="w-4 h-4 mr-2 text-gray-500" />
-                                            {/* FIX: Pass the original string (appt.startDatetime) to formatDate */}
                                             {formatDate(appt.startDatetime)} - {endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                         </p>
                                         <p className="flex items-center">
@@ -132,7 +120,6 @@ export default function AppointmentList({ patientUuid, refreshKey }: Appointment
                                     </div>
                                 </div>
                                 
-                                {/* Status and Actions */}
                                 <div className="text-right">
                                     <span 
                                         className={`inline-flex px-3 py-1 text-xs leading-5 rounded-full font-semibold border ${textClass}`}
@@ -140,7 +127,6 @@ export default function AppointmentList({ patientUuid, refreshKey }: Appointment
                                         {icon}
                                         {text}
                                     </span>
-                                    {/* Action buttons (e.g., Cancel, Reschedule) would go here */}
                                     {title === "Upcoming Appointments" && appt.status.toUpperCase() === 'SCHEDULED' && (
                                         <div className="mt-2 space-x-2">
                                             <button className="text-sm text-red-500 hover:text-red-700">Cancel</button>
@@ -175,7 +161,6 @@ export default function AppointmentList({ patientUuid, refreshKey }: Appointment
         );
     }
 
-    // --- Component JSX ---
     return (
         <div className="bg-white shadow-xl rounded-xl p-6">
             
