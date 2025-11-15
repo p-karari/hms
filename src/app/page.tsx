@@ -1,9 +1,17 @@
+// app/login/page.tsx
+
 import LoginForm from "@/components/auth/LoginForm";
 
-export default function LoginPage() {
-    return (
-        <>
-            <LoginForm />
-        </>
-    );
+interface LoginPageProps {
+  searchParams: Promise<{
+    callbackUrl?: string;
+  }>;
+}
+
+export default async function LoginPage({ searchParams }: LoginPageProps) {
+  // Await the searchParams
+  const params = await searchParams;
+  const callbackUrl = params.callbackUrl;
+
+  return <LoginForm callbackUrl={callbackUrl} />;
 }
