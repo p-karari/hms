@@ -1,332 +1,386 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Plus, CalendarDays, Loader2, AlertCircle } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { AppointmentStatus, AppointmentSearchPayload, searchAppointments } from '@/lib/appointments/searchAppointments';
+import { SingleAppointmentResponse } from '@/lib/appointments/scheduleSingleAppointment';
+import { updateAppointmentStatus } from '@/lib/appointments/updateAppointmentStatus';
+import CreateAppointmentForm from './CreateAppointmentForm';
 
-// --- Import built components and actions ---
-import AppointmentList from '@/components/appointments/AppointmentList';
-import { 
-    getAppointmentSchedulingOptions, 
-    AppointmentSchedulingContext 
-} from '@/lib/appointments/getAppointmentSchedulingOptions';
-import { getPatientLocations } from '@/lib/location/getPatientLocations'; 
-import { scheduleAppointment, NewAppointmentData } from '@/lib/appointments/scheduleAppointment';
+const ITEMS_PER_PAGE = 10;
+type AppointmentViewMode = 'today' | 'allFuture';
 
-interface AppointmentsDashboardProps {
-    patientUuid: string;
-    patientName: string;
-}
+const getTodayPayload = (
+    status: AppointmentStatus,
+    patientUuid: string
+): AppointmentSearchPayload => {
+    const now = new Date();
+    const todayISO = now.toISOString().slice(0, 10);
 
-/**
- * The main container component for the patient's Appointments.
- * It manages the display of the list and the scheduling workflow.
- */
-export default function AppointmentsDashboard({ patientUuid }: AppointmentsDashboardProps) {
-    
-    // Core States
-    const [refreshKey, setRefreshKey] = useState(0); 
-    const [isFormVisible, setIsFormVisible] = useState(false); // New Schedule Form visibility
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isLoadingContext, setIsLoadingContext] = useState(false);
-
-    // Context Data
-    const [schedulingContext, setSchedulingContext] = useState<AppointmentSchedulingContext | null>(null);
-    const [locationOptions, setLocationOptions] = useState<Array<{ uuid: string; display: string }>>([]);
-
-    // Form Data States
-    const [scheduleData, setScheduleData] = useState<Omit<NewAppointmentData, 'patientUuid'>>({
-        startDatetime: new Date().toISOString().substring(0, 16), // YYYY-MM-DDTHH:MM format
-        endDatetime: '',
-        serviceTypeUuid: '',
-        locationUuid: '',
-        providerUuid: undefined,
-        reason: '',
-    });
-
-    // --- Derived State & Logic ---
-    const selectedServiceType = useMemo(() => {
-        if (!schedulingContext || !scheduleData.serviceTypeUuid) return null;
-        return schedulingContext.serviceTypes.find(
-            st => st.uuid === scheduleData.serviceTypeUuid
-        );
-    }, [schedulingContext, scheduleData.serviceTypeUuid]);
-
-    // Automatically calculate end time when service type or start time changes
-    useEffect(() => {
-        if (selectedServiceType && scheduleData.startDatetime) {
-            const startDate = new Date(scheduleData.startDatetime);
-            // Add the service duration in minutes
-            startDate.setMinutes(startDate.getMinutes() + selectedServiceType.duration);
-            
-            // Update endDatetime in the state
-            setScheduleData(prev => ({
-                ...prev,
-                endDatetime: startDate.toISOString().substring(0, 16),
-            }));
-        } else {
-             // Clear end time if no service is selected
-             setScheduleData(prev => ({ ...prev, endDatetime: '' }));
-        }
-    }, [scheduleData.startDatetime, selectedServiceType]);
-
-
-    // --- Initial Data Fetching ---
-    const fetchInitialData = useCallback(async () => {
-        setIsLoadingContext(true);
-        try {
-            // Fetch scheduling options (service types, providers) and locations
-            const [context, locations] = await Promise.all([
-                getAppointmentSchedulingOptions(),
-                getPatientLocations(patientUuid), 
-            ]);
-            
-            setSchedulingContext(context);
-            setLocationOptions(locations.map(loc => ({ uuid: loc.uuid, display: loc.display })));
-            
-            // Set default location if available
-            if (locations.length > 0) {
-                setScheduleData(prev => ({ ...prev, locationUuid: locations[0].uuid }));
-            }
-            
-        } catch (error) {
-            console.error("Failed to load initial data for appointments form:", error);
-            alert("Failed to load scheduling context. Check network and API configuration.");
-        } finally {
-            setIsLoadingContext(false);
-        }
-    }, [patientUuid]);
-
-    useEffect(() => {
-        fetchInitialData();
-    }, [fetchInitialData]);
-
-
-    // --- Scheduling Submission Handler ---
-    const handleScheduleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        
-        if (!scheduleData.serviceTypeUuid || !scheduleData.locationUuid || !scheduleData.endDatetime) {
-            alert('Missing Service Type, Location, or Appointment Time.');
-            return;
-        }
-
-        setIsSubmitting(true);
-        
-        // Convert YYYY-MM-DDTHH:MM local time to ISO 8601 (with Z or offset)
-        const formatForApi = (datetimeLocal: string) => new Date(datetimeLocal).toISOString();
-
-        const finalPayload: NewAppointmentData = {
-            patientUuid: patientUuid,
-            startDatetime: formatForApi(scheduleData.startDatetime),
-            endDatetime: formatForApi(scheduleData.endDatetime),
-            serviceTypeUuid: scheduleData.serviceTypeUuid,
-            locationUuid: scheduleData.locationUuid,
-            providerUuid: scheduleData.providerUuid,
-            reason: scheduleData.reason,
-        };
-
-        try {
-            await scheduleAppointment(finalPayload);
-            
-            alert(`Appointment scheduled successfully for ${finalPayload.startDatetime.split('T')[0]}`);
-            setRefreshKey(prevKey => prevKey + 1); // Refresh the list
-            
-            // Reset state
-            setIsFormVisible(false);
-            setScheduleData(prev => ({
-                 ...prev,
-                 startDatetime: new Date().toISOString().substring(0, 16),
-                 serviceTypeUuid: '',
-                 providerUuid: undefined,
-                 reason: '',
-            }));
-
-        } catch (error: any) {
-            console.error('Appointment scheduling failed:', error);
-            alert(`Scheduling failed. Check if the slot is already taken. Error: ${error.message}`);
-        } finally {
-            setIsSubmitting(false);
-        }
+    return {
+        startDate: `${todayISO}T00:00:00.000Z`,
+        endDate: `${todayISO}T23:59:59.999Z`,
+        status,
+        patientUuid
     };
-    
-    // --- New Appointment Form JSX (Inline Component) ---
-    const NewScheduleForm = () => (
-        <div className="bg-white border border-indigo-200 rounded-lg p-6 shadow-md mb-8">
-            <h3 className="text-xl font-semibold text-indigo-700 mb-4 flex items-center">
-                <Plus className="w-5 h-5 mr-2" /> Book New Appointment
-            </h3>
-            
-            {isLoadingContext ? (
-                <div className="text-center p-4 text-gray-600">
-                    <Loader2 className="w-5 h-5 mx-auto animate-spin" />
-                    Preparing scheduling options...
-                </div>
-            ) : !schedulingContext ? (
-                <div className="p-3 bg-red-50 border border-red-200 text-red-800 text-sm rounded flex items-center">
-                    <AlertCircle className="w-4 h-4 mr-2" />
-                    **Critical Error**: Could not load scheduling options (Service Types/Providers).
-                </div>
-            ) : (
-                <form onSubmit={handleScheduleSubmit} className="space-y-4">
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        
-                        {/* 1. Service Type */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Service Type</label>
-                            <select
-                                value={scheduleData.serviceTypeUuid}
-                                onChange={(e) => setScheduleData({ ...scheduleData, serviceTypeUuid: e.target.value })}
-                                className="w-full border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                required
-                                disabled={isSubmitting}
-                            >
-                                <option value="">Select Service</option>
-                                {schedulingContext.serviceTypes.map(st => (
-                                    <option key={st.uuid} value={st.uuid}>
-                                        {st.display} ({st.duration} min)
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                        
-                        {/* 2. Start Date and Time */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Start Date/Time</label>
-                            <input
-                                type="datetime-local"
-                                value={scheduleData.startDatetime}
-                                onChange={(e) => setScheduleData({ ...scheduleData, startDatetime: e.target.value })}
-                                className="w-full border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                required
-                                disabled={isSubmitting}
-                            />
-                        </div>
+};
 
-                        {/* 3. Calculated End Time */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Calculated End Time</label>
-                            <input
-                                type="text"
-                                value={scheduleData.endDatetime ? new Date(scheduleData.endDatetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Select Service/Start Time'}
-                                className="w-full border border-gray-300 bg-gray-100 rounded-lg p-2 text-gray-600"
-                                readOnly
-                            />
-                        </div>
+const getAllFuturePayload = (
+    status: AppointmentStatus,
+    patientUuid: string
+): AppointmentSearchPayload => {
+    const now = new Date();
+    const todayISO = now.toISOString().slice(0, 10);
 
-                        {/* 4. Location */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-                            <select
-                                value={scheduleData.locationUuid}
-                                onChange={(e) => setScheduleData({ ...scheduleData, locationUuid: e.target.value })}
-                                className="w-full border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                required
-                                disabled={isSubmitting}
-                            >
-                                <option value="">Select Location</option>
-                                {locationOptions.map(loc => (
-                                    <option key={loc.uuid} value={loc.uuid}>{loc.display}</option>
-                                ))}
-                            </select>
-                        </div>
-                        
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        
-                        {/* 5. Provider (Optional) */}
-                        <div className="md:col-span-1">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Assign Provider (Optional)</label>
-                            <select
-                                value={scheduleData.providerUuid || ''}
-                                onChange={(e) => setScheduleData({ ...scheduleData, providerUuid: e.target.value || undefined })}
-                                className="w-full border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                disabled={isSubmitting}
-                            >
-                                <option value="">Any Available</option>
-                                {schedulingContext.providers.map(p => (
-                                    <option key={p.uuid} value={p.uuid}>{p.display}</option>
-                                ))}
-                            </select>
-                        </div>
-                        
-                        {/* 6. Reason/Notes */}
-                        <div className="md:col-span-2">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Reason for Appointment</label>
-                            <input
-                                type="text"
-                                value={scheduleData.reason}
-                                onChange={(e) => setScheduleData({ ...scheduleData, reason: e.target.value })}
-                                className="w-full border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                placeholder="Brief reason for the visit (e.g., Follow-up lab results, Annual physical)"
-                                disabled={isSubmitting}
-                            />
-                        </div>
+    return {
+        startDate: `${todayISO}T00:00:00.000Z`,
+        status,
+        patientUuid,
+        endDate: ''
+    };
+};
 
-                    </div>
-                    
-                    {/* Submission Button */}
-                    <div className="flex justify-end space-x-3 pt-2">
-                        <button
-                            type="button"
-                            onClick={() => setIsFormVisible(false)}
-                            className="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300"
-                            disabled={isSubmitting}
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            className="px-6 py-2 text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:bg-indigo-300 flex items-center"
-                            disabled={isSubmitting || !scheduleData.serviceTypeUuid || !scheduleData.locationUuid || !scheduleData.endDatetime}
-                        >
-                            {isSubmitting ? (
-                                <>
-                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                    Booking Slot...
-                                </>
-                            ) : (
-                                <>
-                                    <CalendarDays className="w-4 h-4 mr-2" /> Schedule Appointment
-                                </>
-                            )}
-                        </button>
-                    </div>
-                </form>
-            )}
+const Modal = ({ children, onClose }: { children: React.ReactNode, onClose: () => void }) => (
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex justify-center items-center">
+        <div className="relative bg-white p-6 rounded-lg shadow-xl w-full max-w-2xl mx-4">
+            <button onClick={onClose} className="absolute top-3 right-3 text-gray-500 hover:text-gray-800 text-xl">
+                &times;
+            </button>
+            {children}
         </div>
-    );
+    </div>
+);
 
+const StatusBadge = ({ status }: { status: string }) => {
+    const statusStyles = {
+        Scheduled: 'bg-blue-100 text-blue-800 border border-blue-200',
+        CheckedIn: 'bg-yellow-100 text-yellow-800 border border-yellow-200',
+        Completed: 'bg-green-100 text-green-800 border border-green-200',
+        Cancelled: 'bg-red-100 text-red-800 border border-red-200',
+        Missed: 'bg-gray-100 text-gray-800 border border-gray-200'
+    };
 
     return (
-        <div className="space-y-6">
-            <h1 className="text-3xl font-extrabold text-gray-900 border-b pb-2">
-                Appointment Scheduling
-            </h1>
-            
-            {/* Action Bar */}
-            <div className="flex justify-between items-center">
-                <h2 className="text-xl font-semibold text-gray-700 flex items-center">
-                    <CalendarDays className="w-6 h-6 mr-2 text-indigo-600" /> Patient Schedule
-                </h2>
+        <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusStyles[status as keyof typeof statusStyles] || 'bg-gray-100'}`}>
+            {status}
+        </span>
+    );
+};
+
+export default function SinglePatientAppointmentDashboard({
+    patientUuid,
+    patientName
+}: {
+    patientUuid: string;
+    patientName?: string;
+}) {
+    const router = useRouter();
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [viewMode, setViewMode] = useState<AppointmentViewMode>('today');
+    const [currentStatusFilter, setCurrentStatusFilter] = useState<AppointmentStatus>('Scheduled');
+    const [patientSearchQuery, setPatientSearchQuery] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [appointments, setAppointments] = useState<SingleAppointmentResponse[] | null>(null);
+    const [isLoadingAppointments, setIsLoadingAppointments] = useState(true);
+    const [updatingAppointment, setUpdatingAppointment] = useState<string | null>(null);
+
+    const handleCheckIn = async (appointmentUuid: string) => {
+        setUpdatingAppointment(appointmentUuid);
+        try {
+            const updatedAppointment = await updateAppointmentStatus({
+                uuid: appointmentUuid,
+                status: 'CheckedIn'
+            });
+
+            if (updatedAppointment) {
+                setAppointments(prev => 
+                    prev?.map(app => 
+                        app.uuid === appointmentUuid 
+                            ? { ...app, status: 'CheckedIn' }
+                            : app
+                    ) || null
+                );
+                
+                router.push(`/dashboard/patients/${patientUuid}`);
+            }
+        } catch (error) {
+            console.error('Failed to check in appointment:', error);
+        } finally {
+            setUpdatingAppointment(null);
+        }
+    };
+
+    const handleCheckOut = async (appointmentUuid: string) => {
+        setUpdatingAppointment(appointmentUuid);
+        try {
+            const updatedAppointment = await updateAppointmentStatus({
+                uuid: appointmentUuid,
+                status: 'Completed'
+            });
+
+            if (updatedAppointment) {
+                setAppointments(prev => 
+                    prev?.map(app => 
+                        app.uuid === appointmentUuid 
+                            ? { ...app, status: 'Completed' }
+                            : app
+                    ) || null
+                );
+            }
+        } catch (error) {
+            console.error('Failed to check out appointment:', error);
+        } finally {
+            setUpdatingAppointment(null);
+        }
+    };
+
+    const fetchAppointments = useCallback(async () => {
+        setIsLoadingAppointments(true);
+        setAppointments(null);
+        setCurrentPage(1);
+
+        try {
+            let data: SingleAppointmentResponse[] = [];
+
+            if (viewMode === 'today') {
+                const payload = getTodayPayload(currentStatusFilter, patientUuid);
+                data = await searchAppointments(payload);
+            } else {
+                const payload = getAllFuturePayload(currentStatusFilter, patientUuid);
+                data = await searchAppointments(payload);
+            }
+
+            setAppointments(data);
+        } catch (error) {
+            console.error("Failed to fetch patient appointments:", error);
+            setAppointments([]);
+        } finally {
+            setIsLoadingAppointments(false);
+        }
+    }, [viewMode, currentStatusFilter, patientUuid]);
+
+    useEffect(() => {
+        fetchAppointments();
+    }, [fetchAppointments]);
+
+    const refetchAllData = () => fetchAppointments();
+
+    const filteredAppointments = useMemo(() => {
+        if (!appointments) return [];
+
+        if (!patientSearchQuery) return appointments;
+
+        const q = patientSearchQuery.toLowerCase();
+        return appointments.filter(app =>
+            app.service.name.toLowerCase().includes(q) ||
+            app.location.name.toLowerCase().includes(q)
+        );
+    }, [appointments, patientSearchQuery]);
+
+    const totalPages = Math.ceil(filteredAppointments.length / ITEMS_PER_PAGE);
+    const paginatedAppointments = useMemo(() => {
+        const start = (currentPage - 1) * ITEMS_PER_PAGE;
+        return filteredAppointments.slice(start, start + ITEMS_PER_PAGE);
+    }, [filteredAppointments, currentPage]);
+
+    return (
+        <div className="p-4 text-black">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6 p-4 bg-white rounded-lg border border-gray-200">
+                <div className="flex flex-wrap items-center gap-2">
+                    <button
+                        onClick={() => setViewMode('today')}
+                        className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                            viewMode === 'today' 
+                                ? 'bg-indigo-600 text-white' 
+                                : 'text-gray-700 hover:bg-gray-100'
+                        }`}
+                    >
+                        Today
+                    </button>
+                    <button
+                        onClick={() => setViewMode('allFuture')}
+                        className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                            viewMode === 'allFuture' 
+                                ? 'bg-indigo-600 text-white' 
+                                : 'text-gray-700 hover:bg-gray-100'
+                        }`}
+                    >
+                        All Future
+                    </button>
+                    
+                    <div className="h-6 border-l border-gray-300 mx-1"></div>
+                    
+                    {['Scheduled', 'CheckedIn', 'Completed', 'Cancelled'].map((status) => (
+                        <button
+                            key={status}
+                            onClick={() => setCurrentStatusFilter(status as AppointmentStatus)}
+                            className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                                currentStatusFilter === status 
+                                    ? 'bg-indigo-600 text-white' 
+                                    : 'text-gray-700 hover:bg-gray-100'
+                            }`}
+                        >
+                            {status}
+                        </button>
+                    ))}
+                </div>
+
                 <button
-                    onClick={() => setIsFormVisible(prev => !prev)}
-                    className="flex items-center px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg shadow-md hover:bg-indigo-700 transition duration-150"
+                    onClick={() => setIsModalOpen(true)}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium whitespace-nowrap"
                 >
-                    <Plus className="w-5 h-5 mr-2" />
-                    {isFormVisible ? 'Hide Scheduling Form' : 'Book New Appointment'}
+                    + New Appointment
                 </button>
             </div>
 
-            {/* 2. New Appointment Form */}
-            {isFormVisible && <NewScheduleForm />}
+            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between mb-4 p-4 bg-white rounded-lg border border-gray-200">
+                <div className="flex items-center gap-3">
+                    <span className="text-sm font-medium text-gray-700">
+                        {filteredAppointments.length} appointment{filteredAppointments.length !== 1 ? 's' : ''}
+                    </span>
+                </div>
+                
+                <div className="relative w-full sm:w-64">
+                    <input
+                        type="text"
+                        placeholder="Search appointments..."
+                        value={patientSearchQuery}
+                        onChange={(e) => {
+                            setPatientSearchQuery(e.target.value);
+                            setCurrentPage(1);
+                        }}
+                        className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                    />
+                    <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </div>
+            </div>
 
-            {/* 3. Appointment List */}
-            <AppointmentList 
-                patientUuid={patientUuid} 
-                refreshKey={refreshKey}
-            />
+            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                            <tr>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Service</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    {viewMode === 'today' ? 'Time' : 'Date & Time'}
+                                </th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+
+                        <tbody className="bg-white divide-y divide-gray-200">
+                            {isLoadingAppointments && (
+                                <tr>
+                                    <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                                        <div className="flex justify-center">
+                                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600"></div>
+                                        </div>
+                                        <p className="mt-2 text-sm">Loading appointments...</p>
+                                    </td>
+                                </tr>
+                            )}
+
+                            {paginatedAppointments.map(app => (
+                                <tr key={app.uuid} className="hover:bg-gray-50 transition-colors">
+                                    <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                                        {app.service.name}
+                                    </td>
+                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                                        {app.location.name}
+                                    </td>
+                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                                        {viewMode === 'allFuture'
+                                            ? new Date(app.startDateTime).toLocaleString()
+                                            : new Date(app.startDateTime).toLocaleTimeString([], { 
+                                                hour: '2-digit', 
+                                                minute: '2-digit' 
+                                            })}
+                                    </td>
+                                    <td className="px-4 py-3 whitespace-nowrap">
+                                        <StatusBadge status={app.status} />
+                                    </td>
+                                    <td className="px-4 py-3 whitespace-nowrap text-sm">
+                                        {app.status === 'Scheduled' ? (
+                                            <button
+                                                onClick={() => handleCheckIn(app.uuid)}
+                                                disabled={updatingAppointment === app.uuid}
+                                                className="text-indigo-600 hover:text-indigo-900 font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                {updatingAppointment === app.uuid ? 'Checking In...' : 'Check In'}
+                                            </button>
+                                        ) : app.status === 'CheckedIn' ? (
+                                            <button
+                                                onClick={() => handleCheckOut(app.uuid)}
+                                                disabled={updatingAppointment === app.uuid}
+                                                className="text-orange-600 hover:text-orange-900 font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                {updatingAppointment === app.uuid ? 'Checking Out...' : 'Check Out'}
+                                            </button>
+                                        ) : (
+                                            <button className="text-gray-600 hover:text-gray-900 font-medium text-sm">
+                                                View Details
+                                            </button>
+                                        )}
+                                    </td>
+                                </tr>
+                            ))}
+
+                            {!isLoadingAppointments && paginatedAppointments.length === 0 && (
+                                <tr>
+                                    <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                                        <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                        </svg>
+                                        <p className="mt-2 text-sm">No appointments found</p>
+                                        <p className="text-xs text-gray-400 mt-1">
+                                            Try adjusting your filters or create a new appointment
+                                        </p>
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+
+                {totalPages > 1 && (
+                    <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
+                        <span className="text-sm text-gray-700">
+                            Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to {Math.min(currentPage * ITEMS_PER_PAGE, filteredAppointments.length)} of {filteredAppointments.length}
+                        </span>
+                        <div className="flex gap-1">
+                            <button
+                                disabled={currentPage === 1}
+                                onClick={() => setCurrentPage(prev => prev - 1)}
+                                className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                Previous
+                            </button>
+                            <button
+                                disabled={currentPage === totalPages}
+                                onClick={() => setCurrentPage(prev => prev + 1)}
+                                className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                Next
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {isModalOpen && (
+                <Modal onClose={() => setIsModalOpen(false)}>
+                    <CreateAppointmentForm
+                        onSuccess={() => {
+                            setIsModalOpen(false);
+                            refetchAllData();
+                        }}
+                    />
+                </Modal>
+            )}
         </div>
     );
 }
