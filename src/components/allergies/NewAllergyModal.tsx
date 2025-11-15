@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Loader2, X, AlertTriangle } from 'lucide-react';
 
-// --- Import Necessary Actions and Types ---
 import { 
     getAllergyConceptOptions, 
     AllergenConceptLists, 
@@ -18,13 +17,11 @@ interface NewAllergyModalProps {
     patientUuid: string;
     isOpen: boolean;
     onClose: () => void;
-    onAllergySuccess: () => void; // Callback to refresh the list
+    onAllergySuccess: () => void; 
 }
 
 type ClientAllergyType = 'DRUG' | 'FOOD' | 'ENVIRONMENTAL' | 'OTHER';
 
-// Placeholder for a list of common reaction concepts (UUIDs)
-// In a real system, this would be fetched via a dedicated action like getAllergyReactionConcepts.
 const MOCK_REACTION_CONCEPTS: AllergenConceptOption[] = [
     { uuid: 'react-rash', display: 'Rash / Hives' },
     { uuid: 'react-anaphylaxis', display: 'Anaphylaxis / Severe Reaction' },
@@ -33,19 +30,15 @@ const MOCK_REACTION_CONCEPTS: AllergenConceptOption[] = [
 ];
 
 
-/**
- * Modal containing the form for documenting a new patient allergy or ADR.
- */
+
 export default function NewAllergyModal({ patientUuid, isOpen, onClose, onAllergySuccess }: NewAllergyModalProps) {
     
-    // --- State Management ---
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLoadingConcepts, setIsLoadingConcepts] = useState(true);
     const [conceptLists, setConceptLists] = useState<AllergenConceptLists>({
         drugs: [], foods: [], environmental: []
     });
     
-    // Form Data State
     const [formData, setFormData] = useState({
         allergyType: 'DRUG' as ClientAllergyType,
         allergenUuid: '',
@@ -55,7 +48,6 @@ export default function NewAllergyModal({ patientUuid, isOpen, onClose, onAllerg
         comment: '',
     });
 
-    // --- Concept Initialization ---
     const fetchConcepts = useCallback(async () => {
         setIsLoadingConcepts(true);
         try {
@@ -75,22 +67,19 @@ export default function NewAllergyModal({ patientUuid, isOpen, onClose, onAllerg
         }
     }, [isOpen, fetchConcepts]);
 
-    // --- Dynamic Content Selection ---
     const currentAllergenOptions: AllergenConceptOption[] = useMemo(() => {
         switch (formData.allergyType) {
             case 'DRUG': return conceptLists.drugs;
             case 'FOOD': return conceptLists.foods;
             case 'ENVIRONMENTAL': return conceptLists.environmental;
-            case 'OTHER': return []; // For 'OTHER', the user might manually enter text (not supported by this basic form structure)
+            case 'OTHER': return []; 
             default: return [];
         }
     }, [formData.allergyType, conceptLists]);
 
-    // Validation
     const isFormValid = formData.allergenUuid && formData.reactionUuids.length > 0;
 
     const handleClose = () => {
-        // Reset state upon closing
         setFormData({
             allergyType: 'DRUG',
             allergenUuid: '',
@@ -111,7 +100,6 @@ export default function NewAllergyModal({ patientUuid, isOpen, onClose, onAllerg
         }));
     };
 
-    // --- Form Submission ---
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!isFormValid) {
@@ -134,7 +122,7 @@ export default function NewAllergyModal({ patientUuid, isOpen, onClose, onAllerg
         try {
             await submitPatientAllergy(payload);
             alert(`New ${formData.allergyType} allergy documented successfully.`);
-            onAllergySuccess(); // Refresh the history table
+            onAllergySuccess(); 
             handleClose();
         } catch (error: any) {
             console.error('Allergy documentation failed:', error);
@@ -146,17 +134,14 @@ export default function NewAllergyModal({ patientUuid, isOpen, onClose, onAllerg
 
     if (!isOpen) return null;
 
-    // --- Component JSX ---
     return (
         <div className="fixed inset-0 backdrop-blur-sm bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl p-6 relative">
                 
-                {/* Modal Header */}
                 <h2 className="text-2xl font-bold border-b pb-3 mb-4 text-red-700 flex items-center">
                     <AlertTriangle className="w-6 h-6 mr-2" /> Document New Allergy / ADR
                 </h2>
                 
-                {/* Close Button */}
                 <button 
                     onClick={handleClose} 
                     className="absolute top-4 right-4 text-gray-500 hover:text-gray-800 text-2xl"
@@ -173,10 +158,8 @@ export default function NewAllergyModal({ patientUuid, isOpen, onClose, onAllerg
                 ) : (
                     <form onSubmit={handleSubmit} className="space-y-6">
                         
-                        {/* 1. Allergy Type and Allergen Selection */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             
-                            {/* Allergy Type */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Allergy Category</label>
                                 <select
@@ -191,7 +174,6 @@ export default function NewAllergyModal({ patientUuid, isOpen, onClose, onAllerg
                                 </select>
                             </div>
 
-                            {/* Allergen Concept */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
                                     Allergen / Substance
@@ -216,9 +198,7 @@ export default function NewAllergyModal({ patientUuid, isOpen, onClose, onAllerg
                             </div>
                         </div>
 
-                        {/* 2. Severity and Onset Date */}
                         <div className="grid grid-cols-2 gap-6">
-                            {/* Severity */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Severity</label>
                                 <select
@@ -233,7 +213,6 @@ export default function NewAllergyModal({ patientUuid, isOpen, onClose, onAllerg
                                 </select>
                             </div>
                             
-                            {/* Onset Date */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Approximate Onset Date (Optional)</label>
                                 <input
@@ -246,7 +225,6 @@ export default function NewAllergyModal({ patientUuid, isOpen, onClose, onAllerg
                             </div>
                         </div>
                         
-                        {/* 3. Reaction Selection */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2 required">
                                 Documented Reactions (Select one or more)
@@ -275,7 +253,6 @@ export default function NewAllergyModal({ patientUuid, isOpen, onClose, onAllerg
                             )}
                         </div>
 
-                        {/* 4. Comment/Notes */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Clinician Comment / Notes</label>
                             <textarea
@@ -287,7 +264,6 @@ export default function NewAllergyModal({ patientUuid, isOpen, onClose, onAllerg
                             />
                         </div>
                         
-                        {/* 5. Submission Button */}
                         <div className="flex justify-end pt-4 border-t mt-4">
                             <button
                                 type="button"
