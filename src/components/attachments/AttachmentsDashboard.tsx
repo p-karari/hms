@@ -3,11 +3,9 @@
 import React, { useState, useEffect, useCallback, ChangeEvent } from 'react';
 import { Plus, FolderOpen, Loader2, AlertTriangle, Upload, FileText, X } from 'lucide-react';
 
-// --- Import all built components and actions ---
 import AttachmentList from '@/components/attachments/AttachmentList';
 import { getAttachmentUploadContext } from '@/lib/attachments/getAttachmentUploadContext';
 import { uploadPatientAttachment } from '@/lib/attachments/uploadPatientAttachment';
-// import { getProviderUuid } from '@/lib/config/provider';
 import { getPatientLocations } from '@/lib/location/getPatientLocations';
 
 
@@ -16,10 +14,7 @@ interface AttachmentsDashboardProps {
     patientName: string;
 }
 
-/**
- * The main container component for the patient's Clinical Documents / Attachments.
- * It manages the display of the list and the file upload workflow.
- */
+
 export default function AttachmentsDashboard({ patientUuid }: AttachmentsDashboardProps) {
     
     const [refreshKey, setRefreshKey] = useState(0); 
@@ -27,12 +22,10 @@ export default function AttachmentsDashboard({ patientUuid }: AttachmentsDashboa
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLoadingContext, setIsLoadingContext] = useState(false);
     
-    // Context States
     const [documentConceptUuid, setDocumentConceptUuid] = useState<string | null>(null);
     const [providerUuid, setProviderUuid] = useState<string | null>(null);
     const [locationOptions, setLocationOptions] = useState<Array<{ uuid: string; display: string }>>([]);
 
-    // Form Data States
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [formData, setFormData] = useState({
         comment: '',
@@ -41,7 +34,6 @@ export default function AttachmentsDashboard({ patientUuid }: AttachmentsDashboa
 
     const MAX_FILE_SIZE_MB = 5; 
 const providerId = process.env.NEXT_PUBLIC_PROVIDER_UUID!;
-    // --- Initial Data Fetching ---
     const fetchInitialData = useCallback(async () => {
         setIsLoadingContext(true);
         try {
@@ -60,7 +52,6 @@ const providerId = process.env.NEXT_PUBLIC_PROVIDER_UUID!;
             
         } catch (error) {
             console.error("Failed to load initial data for attachments form:", error);
-            // Consider setting a visible error message here
         } finally {
             setIsLoadingContext(false);
         }
@@ -70,21 +61,19 @@ const providerId = process.env.NEXT_PUBLIC_PROVIDER_UUID!;
         fetchInitialData();
     }, [fetchInitialData]);
 
-    // --- File Handling ---
     const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files ? e.target.files[0] : null;
         if (file) {
             if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
                 alert(`File size exceeds the limit of ${MAX_FILE_SIZE_MB}MB.`);
                 setSelectedFile(null);
-                e.target.value = ''; // Reset the file input
+                e.target.value = ''; 
                 return;
             }
         }
         setSelectedFile(file);
     };
 
-    // --- Form Submission ---
     const handleFormSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         
@@ -96,20 +85,17 @@ const providerId = process.env.NEXT_PUBLIC_PROVIDER_UUID!;
         setIsSubmitting(true);
 
         try {
-            // Step 1: Read the file content as a Base64 string
             const fileReader = new FileReader();
             fileReader.readAsDataURL(selectedFile);
 
             const fileBase64 = await new Promise<string>((resolve, reject) => {
                 fileReader.onload = () => {
-                    // Extract the base64 part (remove 'data:mime/type;base64,')
                     const base64String = (fileReader.result as string).split(',')[1];
                     resolve(base64String);
                 };
                 fileReader.onerror = (error) => reject(error);
             });
             
-            // Step 2: Prepare and send the payload
             const payload = {
                 patientUuid: patientUuid,
                 documentConceptUuid: documentConceptUuid,
@@ -124,9 +110,8 @@ const providerId = process.env.NEXT_PUBLIC_PROVIDER_UUID!;
             await uploadPatientAttachment(payload);
             
             alert(`File "${selectedFile.name}" uploaded successfully.`);
-            setRefreshKey(prevKey => prevKey + 1); // Refresh the list
+            setRefreshKey(prevKey => prevKey + 1); 
             
-            // Reset state
             setIsFormVisible(false);
             setSelectedFile(null);
             setFormData(prev => ({ ...prev, comment: '' }));
@@ -139,7 +124,6 @@ const providerId = process.env.NEXT_PUBLIC_PROVIDER_UUID!;
         }
     };
     
-    // --- New Attachment Form JSX (Inline Component) ---
     const NewAttachmentForm = () => (
         <div className="bg-white border border-blue-200 rounded-lg p-6 shadow-md mb-8">
             <h3 className="text-xl font-semibold text-blue-700 mb-4 flex items-center">
@@ -160,7 +144,6 @@ const providerId = process.env.NEXT_PUBLIC_PROVIDER_UUID!;
                 <form onSubmit={handleFormSubmit} className="space-y-4">
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {/* File Input */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Select File (Max {MAX_FILE_SIZE_MB}MB)</label>
                             <input
@@ -169,7 +152,7 @@ const providerId = process.env.NEXT_PUBLIC_PROVIDER_UUID!;
                                 className="w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                                 required
                                 disabled={isSubmitting}
-                                accept=".pdf, .jpg, .jpeg, .png, .doc, .docx" // Limit accepted types
+                                accept=".pdf, .jpg, .jpeg, .png, .doc, .docx" 
                             />
                             {selectedFile && (
                                 <p className="mt-1 text-xs text-gray-600 flex items-center">
@@ -179,7 +162,6 @@ const providerId = process.env.NEXT_PUBLIC_PROVIDER_UUID!;
                             )}
                         </div>
 
-                        {/* Location */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Clinic/Location of Documentation</label>
                             <select
@@ -197,7 +179,6 @@ const providerId = process.env.NEXT_PUBLIC_PROVIDER_UUID!;
                         </div>
                     </div>
                     
-                    {/* Comment/Description */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Comment / Description</label>
                         <textarea
@@ -210,7 +191,6 @@ const providerId = process.env.NEXT_PUBLIC_PROVIDER_UUID!;
                         />
                     </div>
 
-                    {/* Submission Button */}
                     <div className="flex justify-end space-x-3 pt-2">
                         <button
                             type="button"
@@ -249,7 +229,6 @@ const providerId = process.env.NEXT_PUBLIC_PROVIDER_UUID!;
                 Clinical Documents & Attachments
             </h1>
             
-            {/* Action Bar */}
             <div className="flex justify-between items-center">
                 <h2 className="text-xl font-semibold text-gray-700 flex items-center">
                     <FolderOpen className="w-6 h-6 mr-2" /> Document List
@@ -263,10 +242,8 @@ const providerId = process.env.NEXT_PUBLIC_PROVIDER_UUID!;
                 </button>
             </div>
 
-            {/* 2. New Attachment Form */}
             {isFormVisible && <NewAttachmentForm />}
 
-            {/* 3. Attachment List Table */}
             <AttachmentList 
                 patientUuid={patientUuid} 
                 refreshKey={refreshKey}
