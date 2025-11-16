@@ -3,25 +3,21 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Loader2, AlertTriangle, FileText, Download } from 'lucide-react';
 
-// --- Import Necessary Actions and Types ---
 import { getPatientAttachments, Attachment } from '@/lib/attachments/getPatientAttachments';
-import { getAuthHeaders } from '@/lib/auth/auth'; // Need headers for authenticated download
-import { formatDate } from '@/lib/utils/utils'; // Reusing your utility function
+import { getAuthHeaders } from '@/lib/auth/auth';
+import { formatDate } from '@/lib/utils/utils'; 
 
 interface AttachmentListProps {
     patientUuid: string;
-    refreshKey: number; // To force refresh after a new file is uploaded
+    refreshKey: number; 
 }
 
-/**
- * Displays the patient's list of clinical attachments (documents/files).
- */
+
 export default function AttachmentList({ patientUuid, refreshKey }: AttachmentListProps) {
     const [attachments, setAttachments] = useState<Attachment[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // --- Data Fetching ---
     const fetchAttachments = useCallback(async () => {
         setIsLoading(true);
         setError(null);
@@ -37,18 +33,14 @@ export default function AttachmentList({ patientUuid, refreshKey }: AttachmentLi
         }
     }, [patientUuid]);
 
-    // Re-fetch data whenever the refreshKey changes
     useEffect(() => {
         fetchAttachments();
     }, [fetchAttachments, refreshKey]);
 
-    // --- Download Handler ---
     const handleDownload = async (attachment: Attachment) => {
         try {
-            // Get authentication headers for the secure download request
             const headers = await getAuthHeaders();
             
-            // The complexDataUrl points directly to the resource endpoint in OpenMRS
             const downloadUrl = `${process.env.NEXT_PUBLIC_OPENMRS_API_URL}${attachment.complexDataUrl}`;
 
             const response = await fetch(downloadUrl, { headers });
@@ -58,14 +50,11 @@ export default function AttachmentList({ patientUuid, refreshKey }: AttachmentLi
                 throw new Error("Download failed.");
             }
             
-            // Get the file content as a Blob
             const blob = await response.blob();
             
-            // Use the HTML5 download method
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            // Use the stored file name for the download
             a.download = attachment.fileName; 
             document.body.appendChild(a);
             a.click();
@@ -78,7 +67,6 @@ export default function AttachmentList({ patientUuid, refreshKey }: AttachmentLi
         }
     };
 
-    // --- Utility Functions for Display ---
     const getFileExtension = (fileName: string) => {
         return fileName.split('.').pop()?.toUpperCase() || 'FILE';
     };
@@ -101,7 +89,6 @@ export default function AttachmentList({ patientUuid, refreshKey }: AttachmentLi
         );
     }
 
-    // --- Component JSX ---
     return (
         <div className="bg-white shadow-xl rounded-xl">
 
@@ -126,30 +113,25 @@ export default function AttachmentList({ patientUuid, refreshKey }: AttachmentLi
                             {attachments.map((att) => (
                                 <tr key={att.uuid} className="hover:bg-gray-50 transition duration-100">
 
-                                    {/* File Name / Description */}
                                     <td className="px-6 py-4 text-sm font-medium text-gray-900 flex items-center max-w-sm truncate">
                                         <FileText className="w-5 h-5 mr-2 text-blue-500" />
                                         {att.fileName}
                                     </td>
 
-                                    {/* File Type */}
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                                         <span className="inline-flex px-3 py-1 text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
                                             {getFileExtension(att.fileName)}
                                         </span>
                                     </td>
                                     
-                                    {/* Document Concept */}
                                     <td className="px-6 py-4 text-sm text-gray-500">
                                         {att.documentType.display}
                                     </td>
 
-                                    {/* Date Recorded */}
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                                         {formatDate(att.recordedDate)}
                                     </td>
                                     
-                                    {/* Download Action */}
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         <button
                                             onClick={() => handleDownload(att)}
