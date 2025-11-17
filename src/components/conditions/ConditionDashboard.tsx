@@ -78,7 +78,7 @@ export default function ConditionsDashboard({ patientUuid }: ConditionsDashboard
       conditionDisplay: formData.conditionDisplay,
       clinicalStatus: 'active',
       onsetDate: formData.onsetDate,
-      recorderUuid: activeEncounterUuid || '' // must be a Practitioner UUID in production
+      recorderUuid: activeEncounterUuid || ''
     };
 
     try {
@@ -107,7 +107,6 @@ export default function ConditionsDashboard({ patientUuid }: ConditionsDashboard
 
   return (
     <div className="space-y-6">
-      {/* <h1 className="text-3xl font-extrabold text-gray-900 border-b pb-2">Conditions (Problem List)</h1> */}
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold text-gray-700 flex items-center"><ListChecks className="w-6 h-6 mr-2" /> Patient Problem List</h2>
         <button onClick={() => setIsFormVisible(prev => !prev)} className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
@@ -121,7 +120,6 @@ export default function ConditionsDashboard({ patientUuid }: ConditionsDashboard
           <form onSubmit={handleFormSubmit} className="space-y-4">
           
 
-            {/* --- Searchable Diagnosis Input --- */}
             <div className="relative">
               <label>Diagnosis</label>
               <input 
