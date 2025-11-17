@@ -2,7 +2,7 @@
 'use client';
 
 import React, { createContext, useContext, ReactNode } from 'react';
-import { Visit } from '@/lib/patients/manageVisits'; // Ensure this uses the unified type
+import { Visit } from '@/lib/patients/manageVisits'; 
 
 interface PatientDashboardContextType {
   activeVisit: Visit | null;
@@ -23,7 +23,6 @@ interface PatientDashboardProviderProps extends PatientDashboardContextType {
   children: ReactNode;
 }
 
-// This provider component will wrap the entire page content.
 export const PatientDashboardProvider: React.FC<PatientDashboardProviderProps> = ({ 
   children, 
   activeVisit, 
