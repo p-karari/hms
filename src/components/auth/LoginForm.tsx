@@ -2,13 +2,17 @@
 'use client';
 
 import { useFormStatus } from 'react-dom';
-import { login } from '@/lib/auth/auth';
+import { login } from '@/lib/auth/auth'; 
 import { Button } from '@/components/ui/Button';
 import { useActionState } from 'react';
 
 type FormState = {
   error: string | null;
 };
+
+interface LoginFormProps {
+    callbackUrl?: string;
+}
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -20,20 +24,18 @@ function SubmitButton() {
   );
 }
 
-export default function LoginForm() {
+export default function LoginForm({ callbackUrl }: LoginFormProps) {
   const [state, formAction] = useActionState<FormState, FormData>(login, { error: null });
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      {/* Medical-themed decorative elements */}
       <div className="absolute top-10 left-10 w-20 h-20 bg-blue-200 rounded-full opacity-20 blur-xl"></div>
       <div className="absolute bottom-10 right-10 w-16 h-16 bg-indigo-200 rounded-full opacity-30 blur-lg"></div>
-      
-      <form 
-        action={formAction} 
+
+      <form
+        action={formAction}
         className="relative w-full max-w-md mx-auto p-8 bg-white rounded-2xl shadow-xl border border-gray-100 backdrop-blur-sm"
       >
-        {/* Medical cross icon */}
         <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
           <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center shadow-lg">
             <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -48,6 +50,14 @@ export default function LoginForm() {
         </div>
 
         <div className="space-y-6">
+          {callbackUrl && (
+            <input 
+              type="hidden" 
+              name="callbackUrl" 
+              value={callbackUrl} 
+            />
+          )}
+          
           <div className="space-y-3">
             <label 
               htmlFor="username" 
@@ -104,7 +114,6 @@ export default function LoginForm() {
           </div>
         </div>
 
-        {/* Security notice */}
         <div className="mt-6 text-center">
           <p className="text-xs text-gray-500">
             🔒 Secure access for authorized medical staff only
