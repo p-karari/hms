@@ -1,5 +1,3 @@
-// LocationSelector.tsx
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -113,12 +111,10 @@ export default function LocationSelector() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      {/* Background decorative elements */}
       <div className="absolute top-10 left-10 w-20 h-20 bg-blue-200 rounded-full opacity-20 blur-xl"></div>
       <div className="absolute bottom-10 right-10 w-16 h-16 bg-indigo-200 rounded-full opacity-30 blur-lg"></div>
       
       <div className="relative w-full max-w-md mx-auto p-8 bg-white rounded-2xl shadow-xl border border-gray-100 backdrop-blur-sm">
-        {/* Location icon */}
         <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
           <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center shadow-lg">
             <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -158,7 +154,6 @@ export default function LocationSelector() {
           <SubmitButton />
         </form>
 
-        {/* Security notice */}
         <div className="mt-6 text-center">
           <p className="text-xs text-gray-500 flex items-center justify-center gap-1">
             <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
