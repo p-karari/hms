@@ -28,7 +28,6 @@ const fetchEncounters = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      // These functions/variables must be included in the useCallback dependency array
       const fetchedEncounters = await getEncounters(patientUuid);
       const sortedEncounters = fetchedEncounters.sort(
         (a, b) => new Date(b.encounterDatetime).getTime() - new Date(a.encounterDatetime).getTime()
@@ -40,10 +39,9 @@ const fetchEncounters = useCallback(async () => {
     } finally {
       setLoading(false);
     }
-  }, [patientUuid, setEncounters, setLoading, setError]); // 3. The dependency array for useCallback
+  }, [patientUuid, setEncounters, setLoading, setError]);
 
   useEffect(() => {
-    // 4. Now, fetchEncounters is a stable function reference
     fetchEncounters();
   }, [patientUuid, fetchEncounters]);
 
@@ -81,7 +79,6 @@ const fetchEncounters = useCallback(async () => {
                                          ? (encounter.encounterType as { display?: string }).display
                                          : (encounter.encounterType || 'Unknown');
             const providerName = firstProvider?.provider?.display || firstProvider?.display || 'N/A';
-            // const roleName = firstProvider?.encounterRole?.display || 'Unknown';
             const locationDisplay = encounter.location 
                                     ? (encounter.location as { display?: string }).display 
                                     : 'N/A';
