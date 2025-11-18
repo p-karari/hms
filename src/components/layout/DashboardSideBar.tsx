@@ -4,10 +4,9 @@ import React, { useMemo } from 'react';
 import {
   Home, Users, Calendar, BedDouble, ClipboardList,
   FlaskConical, CreditCard, FileText, UserCog, Settings, LogOut,
-  MapPin, BookOpen, ChevronRight, Menu, X
+  MapPin, BookOpen, ChevronRight, Menu, X, Package
 } from 'lucide-react';
 
-// --- MOCK SESSION AND PRIVILEGE CHECKING ---
 const useMockSession = () => {
     const superUserPrivileges = [
       'View Patients', 'View Appointment Types', 'View Encounters', 'Add Observations', 
@@ -23,7 +22,6 @@ const hasRequiredPrivilege = (privileges: string[], requiredPrivilege: string | 
   return privileges.includes(requiredPrivilege);
 };
 
-// --- UPDATED NAVLINK COMPONENT ---
 interface NavLinkProps {
   href: string;
   label: string;
@@ -81,7 +79,6 @@ const NavLink: React.FC<NavLinkProps> = ({ href, label, icon, isLogout = false, 
   );
 };
 
-// --- MAIN UPDATED SIDEBAR COMPONENT ---
 export function DashboardSidebar() {
   const { privileges } = useMockSession();
   const [isMobileOpen, setIsMobileOpen] = React.useState(false);
@@ -98,22 +95,21 @@ export function DashboardSidebar() {
       section: "Clinical Workflow", 
       links: [
         { href: "/dashboard/appointments", label: "Appointments", icon: <Calendar />, requiredPrivilege: "View Appointment Types" },
-        { href: "/dashboard/orders", label: "Order Management", icon: <ClipboardList />, requiredPrivilege: "Add Orders" },
+        // Pharmacy Management removed
+        { href: "/dashboard/pharmacy/dispensing", label: "Dispensing", icon: <ClipboardList />, requiredPrivilege: "Add Orders" },
         { href: "/dashboard/labs", label: "Lab Results Console", icon: <FlaskConical />, requiredPrivilege: "View Observations" },
-        { href: "/dashboard/admissions", label: "Bed/Admission Mgmt", icon: <BedDouble />, requiredPrivilege: "Add Visits" },
         { href: "/dashboard/billing", label: "Billing & Claims", icon: <CreditCard />, requiredPrivilege: "Manage Billing" },
       ]
     },
-    {
-      section: "System & Administration", 
-      links: [
-        { href: "/dashboard/reports", label: "Reports & Analytics", icon: <FileText />, requiredPrivilege: "Run Reports" },
-        { href: "/dashboard/staff", label: "User & Staff Mgmt", icon: <UserCog />, requiredPrivilege: "Manage Users" },
-        { href: "/dashboard/admin/concepts", label: "Concept Dictionary", icon: <BookOpen />, requiredPrivilege: "View Concepts" },
-        { href: "/dashboard/admin/locations", label: "Locations & Wards", icon: <MapPin />, requiredPrivilege: "View Locations" },
-        { href: "/dashboard/settings", label: "Global Settings", icon: <Settings />, requiredPrivilege: "Task: openmrs-core.admin.view" },
-      ]
-    },
+    // {
+    //   section: "System & Administration", 
+    //   links: [
+    //     { href: "/dashboard/reports", label: "Reports & Analytics", icon: <FileText />, requiredPrivilege: "Run Reports" },
+    //     // User & Staff Management removed
+    //     { href: "/dashboard/admin/locations", label: "Locations & Wards", icon: <MapPin />, requiredPrivilege: "View Locations" },
+    //     // Global Settings removed
+    //   ]
+    // },
   ], []);
 
   const filteredNavLinks = useMemo(() => 
@@ -131,7 +127,6 @@ export function DashboardSidebar() {
 
   return (
     <>
-      {/* Mobile Menu Button */}
       <button
         onClick={() => setIsMobileOpen(!isMobileOpen)}
         className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-white border border-gray-200 rounded-lg shadow-sm"
@@ -139,7 +134,6 @@ export function DashboardSidebar() {
         {isMobileOpen ? <X size={20} /> : <Menu size={20} />}
       </button>
 
-      {/* Overlay for mobile */}
       {isMobileOpen && (
         <div 
           className="lg:hidden fixed inset-0 backdrop-blur-sm bg-opacity-50 z-40"
@@ -153,7 +147,6 @@ export function DashboardSidebar() {
         ${isMobileOpen ? 'translate-x-0 w-56' : '-translate-x-full lg:translate-x-0 lg:w-56'}
       `}>
         
-        {/* Updated Brand / Logo */}
         <div className="h-16 flex items-center px-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
           <div className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
@@ -172,7 +165,6 @@ export function DashboardSidebar() {
           </div>
         </div>
 
-        {/* Updated Navigation Links */}
         <nav className="flex-1 px-3 py-4 space-y-4 overflow-y-auto">
           {filteredNavLinks.map(section => (
             <div key={section.section} className="space-y-1">
@@ -195,19 +187,12 @@ export function DashboardSidebar() {
           ))}
         </nav>
 
-        {/* Updated Footer / Logout */}
+        {/* Footer section simplified - removed Logout link and secure text */}
         <div className="p-3 border-t border-gray-200 bg-gray-50/50">
-          <NavLink
-            href="/logout"
-            label="Logout"
-            icon={<LogOut />}
-            requiredPrivilege="View Dashboard" 
-            isLogout={true}
-            onClick={handleLinkClick}
-          />
-          <div className="mt-2 px-2">
+          {/* Only hospital info remains */}
+          <div className="px-2">
             <p className="text-xs text-gray-500 text-center">
-              🔒 Secure medical system
+              ALPHIL HOSPITAL
             </p>
           </div>
         </div>
