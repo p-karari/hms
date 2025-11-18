@@ -6,7 +6,8 @@ import { SessionContext } from '../../lib/context/session-context';
 import { CodedValue } from '@/lib/patients/getPatientObservations';
 import { getVisitTypes } from '@/lib/patients/getVisitTypes';
 import { Visit, createVisit, updateVisit } from '@/lib/patients/manageVisits';
-import { Plus, X, Activity } from 'lucide-react';
+import { Plus, X, Activity, FileText } from 'lucide-react';
+import ClinicalNotesModal from '../encounters/ClinicalNotesModal';
 
 interface PatientActionsProps {
   patientUuid: string;
@@ -25,6 +26,7 @@ const PatientActions: React.FC<PatientActionsProps> = ({
   const [selectedVisitTypeUuid, setSelectedVisitTypeUuid] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showClinicalNotes, setShowClinicalNotes] = useState(false);
   
   const isVisitActive = !!activeVisit;
 
@@ -64,32 +66,24 @@ const PatientActions: React.FC<PatientActionsProps> = ({
   };
 
 const handleEndVisit = async () => {
-    // 1. Pre-flight Checks
     if (!activeVisit) return;
     if (!confirm('End current visit?')) return;
 
     setIsProcessing(true);
-    setError(null); // Clear previous errors
+    setError(null); 
 
     try {
-      // 2. Call the Server Action
-      // The visitUuid is passed here: activeVisit.uuid
       await updateVisit(activeVisit.uuid, {
         stopDatetime: new Date().toISOString(),
       });
       
-      // 3. Success (Action Completion)
-      // If updateVisit succeeds (doesn't throw), trigger UI refresh.
       onActionComplete(); 
       
     } catch (err) {
-      // 4. Failure (Error Handling)
-      // This block catches the explicit Error thrown by updateVisit (API failure, Auth failure, etc.)
       const message = err instanceof Error ? err.message : 'Unknown error during API call.';
       
-      // Truncate the error message for cleaner display in the small UI box
       const displayMessage = message.includes('Failed to update visit:') 
-          ? message.split(' - ')[0] // Show only the first part of the API error
+          ? message.split(' - ')[0]
           : message; 
           
       console.error("End Visit Error:", message);
@@ -172,13 +166,15 @@ const handleEndVisit = async () => {
           <Activity className="w-3 h-3" />
           Capture Vitals
         </Link>
-        {/* <Link 
-          href={`/dashboard/patients/${patientUuid}/consultation`}
-          className="flex items-center gap-2 text-xs p-2 text-blue-600 hover:bg-blue-50 rounded"
+        
+        {/* Clinical Notes Button */}
+        <button 
+          onClick={() => setShowClinicalNotes(true)}
+          className="flex items-center gap-2 text-xs p-2 text-blue-600 hover:bg-blue-50 rounded w-full text-left"
         >
-          <Stethoscope className="w-3 h-3" />
-          Consultation Note
-        </Link> */}
+          <FileText className="w-3 h-3" />
+          Clinical Note
+        </button>
       </div>
 
       {/* Admin Actions */}
@@ -192,6 +188,19 @@ const handleEndVisit = async () => {
           Edit Demographics
         </Link>
       </div> */}
+
+      {/* Clinical Notes Modal */}
+      {showClinicalNotes && (
+        <ClinicalNotesModal
+          patientUuid={patientUuid}
+          activeVisit={activeVisit}
+          onClose={() => setShowClinicalNotes(false)}
+          onSuccess={() => {
+            setShowClinicalNotes(false);
+            onActionComplete(); // Refresh data if needed
+          }}
+        />
+      )}
     </div>
   );
 };
