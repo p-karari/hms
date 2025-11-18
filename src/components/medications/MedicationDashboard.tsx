@@ -5,7 +5,6 @@
 import React, { useState } from 'react';
 import { Plus } from 'lucide-react';
 
-// --- Import all built components ---
 import MedicationHistoryTable from '@/components/medications/MedicationHistoryTable';
 import PrescribeNewModal from '@/components/medications/PrescribeNewModal';
 import AllergyAlertBanner from './AllergyAlertBanner';
@@ -29,12 +28,10 @@ export default function MedicationDashboard({ patientUuid, hasKnownAllergies }: 
                 Medication Management
             </h1>
             
-            {/* 1. Allergy Alert Banner */}
             {hasKnownAllergies && (
                 <AllergyAlertBanner patientUuid={patientUuid} />
             )}
 
-            {/* 2. Controls (Prescribe Button) */}
             <div className="flex justify-between items-center">
                 <h2 className="text-sm font-medium text-gray-700">Current & Past Orders</h2>
                 <button
@@ -46,13 +43,11 @@ export default function MedicationDashboard({ patientUuid, hasKnownAllergies }: 
                 </button>
             </div>
 
-            {/* 3. Medication History Table */}
             <MedicationHistoryTable 
                 key={refreshKey} 
                 patientUuid={patientUuid} 
             />
 
-            {/* 4. Prescription Modal */}
             <PrescribeNewModal
                 patientUuid={patientUuid}
                 isOpen={isModalOpen}
