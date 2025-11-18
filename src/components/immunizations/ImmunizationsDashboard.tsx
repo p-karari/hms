@@ -19,23 +19,18 @@ interface ImmunizationsDashboardProps {
 
 export default function ImmunizationsDashboard({ patientUuid }: ImmunizationsDashboardProps) {
     
-    // 🔑 NEW: Retrieve Active Visit Context from Provider
     const { activeVisit, onActionComplete } = usePatientDashboard();
 
-    // --- State for Workflow Control and UI ---
     const [refreshKey, setRefreshKey] = useState(0); 
     const [isFormVisible, setIsFormVisible] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLoadingInitialData, setIsLoadingInitialData] = useState(false);
     
-    // --- Data States for Form Context ---
     const [vaccineConcepts, setVaccineConcepts] = useState<VaccineConceptOption[]>([]);
     const [locationOptions, setLocationOptions] = useState<Array<{ uuid: string; display: string }>>([]);
     
-    // 🔑 CHANGE: Use NEXT_PUBLIC_DEFAULT_PROVIDER_UUID from the environment
     const [providerUuid] = useState<string | null>(process.env.NEXT_PUBLIC_DEFAULT_PROVIDER_UUID || null); 
 
-    // --- Form Data State ---
     const [formData, setFormData] = useState({
         vaccineConceptUuid: '',
         vaccineDisplay: '', 
@@ -47,11 +42,9 @@ export default function ImmunizationsDashboard({ patientUuid }: ImmunizationsDas
         doseNumber: 1, 
     });
 
-    // --- Initial Data Fetching (Concepts and Locations ONLY) ---
     const fetchInitialData = useCallback(async () => {
         setIsLoadingInitialData(true);
         try {
-            // Fetch concepts and locations concurrently
             const [concepts, locations] = await Promise.all([
                 getVaccineConceptOptions(),
                 getPatientLocations(patientUuid), 
@@ -60,7 +53,6 @@ export default function ImmunizationsDashboard({ patientUuid }: ImmunizationsDas
             setVaccineConcepts(concepts);
             setLocationOptions(locations.map(loc => ({ uuid: loc.uuid, display: loc.display })));
             
-            // Set default location based on context or available options
             const defaultLocationUuid = activeVisit?.location?.uuid || locations[0]?.uuid || '';
             if (defaultLocationUuid) {
                  setFormData(prev => ({ ...prev, locationUuid: defaultLocationUuid }));
@@ -71,13 +63,12 @@ export default function ImmunizationsDashboard({ patientUuid }: ImmunizationsDas
         } finally {
             setIsLoadingInitialData(false);
         }
-    }, [patientUuid, activeVisit?.location?.uuid]); // Depend on activeVisit location
+    }, [patientUuid, activeVisit?.location?.uuid]); 
 
     useEffect(() => {
         fetchInitialData();
     }, [fetchInitialData]);
     
-    // --- Helper to update form data, especially display field ---
     const handleVaccineChange = (uuid: string) => {
         const selectedConcept = vaccineConcepts.find(c => c.uuid === uuid);
         setFormData(prev => ({ 
@@ -88,11 +79,9 @@ export default function ImmunizationsDashboard({ patientUuid }: ImmunizationsDas
     };
 
 
-    // --- Form Submission ---
     const handleFormSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         
-        // 🔑 Use activeVisit directly from context, which holds the visitUuid
         if (!formData.vaccineConceptUuid || !formData.locationUuid || !providerUuid || !activeVisit) {
             alert('Missing critical context: Vaccine, Location, Provider ID, or Active Visit is missing. Cannot proceed.');
             return;
@@ -111,9 +100,7 @@ export default function ImmunizationsDashboard({ patientUuid }: ImmunizationsDas
             expirationDate: formData.expirationDate, 
             manufacturer: formData.manufacturer,
             doseNumber: formData.doseNumber,
-            
-            // Context from the active visit
-            visitUuid: activeVisit.uuid, // 🔑 Essential: Taken from the Context's activeVisit
+            visitUuid: activeVisit.uuid, 
             locationUuid: formData.locationUuid, 
             practitionerUuid: providerUuid,
         };
@@ -124,10 +111,8 @@ export default function ImmunizationsDashboard({ patientUuid }: ImmunizationsDas
             setRefreshKey(prevKey => prevKey + 1); 
             setIsFormVisible(false); 
             
-            // Optionally notify the dashboard that an action occurred
             onActionComplete(); 
             
-            // Reset form data 
             setFormData(prev => ({ 
                 ...prev, 
                 vaccineConceptUuid: '',
@@ -146,12 +131,10 @@ export default function ImmunizationsDashboard({ patientUuid }: ImmunizationsDas
         }
     };
     
-    // Check if the necessary visit context for submission is present
     const canSubmit = activeVisit && formData.vaccineConceptUuid && providerUuid;
     const activeVisitFound = !!activeVisit;
 
 
-    // --- New Immunization Form JSX (Inline Component) ---
     const NewImmunizationForm = () => (
         <div className="bg-white border border-green-200 rounded-lg p-6 shadow-md mb-8">
             <h3 className="text-xl font-semibold text-green-700 mb-4 flex items-center">
@@ -165,7 +148,6 @@ export default function ImmunizationsDashboard({ patientUuid }: ImmunizationsDas
                 </div>
             ) : (
                 <>
-                    {/* Critical Context Warnings */}
                     {!providerUuid && (
                         <div className="p-3 bg-red-50 border border-red-200 text-red-800 text-sm rounded flex items-center mb-4">
                             <AlertCircle className="w-4 h-4 mr-2" />
@@ -181,9 +163,7 @@ export default function ImmunizationsDashboard({ patientUuid }: ImmunizationsDas
 
                     <form onSubmit={handleFormSubmit} className="space-y-4">
                         
-                        {/* Row 1: Core Fields (Vaccine, Date, Location) */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            {/* Vaccine Concept */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Vaccine Administered *</label>
                                 <select
@@ -200,7 +180,6 @@ export default function ImmunizationsDashboard({ patientUuid }: ImmunizationsDas
                                 </select>
                             </div>
 
-                            {/* Administration Date & Time */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Date & Time Administered *</label>
                                 <input
@@ -214,7 +193,6 @@ export default function ImmunizationsDashboard({ patientUuid }: ImmunizationsDas
                                 />
                             </div>
 
-                            {/* Location */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Administration Location *</label>
                                 <select
@@ -232,10 +210,8 @@ export default function ImmunizationsDashboard({ patientUuid }: ImmunizationsDas
                             </div>
                         </div>
                         
-                        {/* Row 2: Additional FHIR/Logistics Fields */}
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-2 border-t pt-4">
                             
-                            {/* Lot Number */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center"><Package className="w-4 h-4 mr-1 text-gray-500"/> Lot Number</label>
                                 <input
@@ -248,7 +224,6 @@ export default function ImmunizationsDashboard({ patientUuid }: ImmunizationsDas
                                 />
                             </div>
                             
-                            {/* Expiration Date */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center"><Calendar className="w-4 h-4 mr-1 text-gray-500"/> Expiry Date</label>
                                 <input
