@@ -2,9 +2,11 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { getPatientDetails, PatientDetailsType, Identifier } from '@/lib/patients/getPatientDetails';
-import { User, MapPin, IdCard, Menu, X, ChevronDown, Calendar, Hash } from 'lucide-react';
+import { User, MapPin, IdCard, Menu, X, ChevronDown, Calendar, Hash, CreditCard } from 'lucide-react';
 import PatientActions from './PatientActions';
 import { Visit } from '@/lib/patients/manageVisits';
+import NewBillModal from '../billing/patientBilling/NewBillModal';
+
 
 interface PatientDetailsProps {
   patientUuid: string;
@@ -33,8 +35,8 @@ const PatientDetails: React.FC<PatientDetailsProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  // NEW STATE: For handling the collapsible section
   const [isExpanded, setIsExpanded] = useState(false);
+  const [showBillModal, setShowBillModal] = useState(false);
 
   const menuRef = useRef<HTMLDivElement | null>(null);
 
@@ -43,7 +45,6 @@ const PatientDetails: React.FC<PatientDetailsProps> = ({
     setError(null);
     try {
       const details = await getPatientDetails(patientUuid);
-      // NOTE: Using the 'person' object's properties as suggested in the data structure
       setPatient(details);
     } catch (err) {
       setError('Failed to load details');
@@ -57,7 +58,6 @@ const PatientDetails: React.FC<PatientDetailsProps> = ({
     fetchDetails();
   }, [fetchDetails]);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -67,6 +67,10 @@ const PatientDetails: React.FC<PatientDetailsProps> = ({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const handleBillCreated = () => {
+    console.log('Bill created successfully');
+  };
 
   if (loading) return <div className="text-sm text-muted-foreground py-2 px-3">Loading patient details...</div>;
   if (error)
@@ -84,7 +88,6 @@ const PatientDetails: React.FC<PatientDetailsProps> = ({
   const preferredName = getPreferredName(patient.person);
   const preferredAddress = patient.person.preferredAddress;
   
-  // Format the birthdate for display
   const formattedBirthdate = patient.person.birthdate 
     ? new Date(patient.person.birthdate).toLocaleDateString('en-US', {
         year: 'numeric',
@@ -93,7 +96,6 @@ const PatientDetails: React.FC<PatientDetailsProps> = ({
       })
     : 'N/A';
   
-  // Display only address1 and cityVillage for the collapsed view
   const briefAddress = preferredAddress ? [
     preferredAddress.address1, 
     preferredAddress.cityVillage
@@ -101,86 +103,94 @@ const PatientDetails: React.FC<PatientDetailsProps> = ({
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
-      {/* Header Section - Slimmed down */}
-    <div className="px-3 py-2 border-b border-gray-100">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="bg-blue-50 p-1.5 rounded-md border border-blue-100">
-            <User className="w-4 h-4 text-blue-600" />
-          </div>
-          <div>
-            <h2 className="text-base font-semibold text-gray-900 leading-tight">{preferredName}</h2>
-            <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
-              <span className="flex items-center gap-1">
-                <span className="font-medium text-gray-700">{patient.person.gender || 'N/A'}</span>
-                • 
-                <span className="font-medium text-gray-700">{patient.person.age || '0'} years</span>
-              </span>
-              {primaryId && (
+      {/* Header Section */}
+      <div className="px-3 py-2 border-b border-gray-100">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="bg-blue-50 p-1.5 rounded-md border border-blue-100">
+              <User className="w-4 h-4 text-blue-600" />
+            </div>
+            <div>
+              <h2 className="text-base font-semibold text-gray-900 leading-tight">{preferredName}</h2>
+              <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
                 <span className="flex items-center gap-1">
-                  <IdCard className="w-3 h-3 text-blue-500" />
-                  <span className="font-medium text-gray-700">{primaryId.identifier}</span>
+                  <span className="font-medium text-gray-700">{patient.person.gender || 'N/A'}</span>
+                  • 
+                  <span className="font-medium text-gray-700">{patient.person.age || '0'} years</span>
                 </span>
+                {primaryId && (
+                  <span className="flex items-center gap-1">
+                    <IdCard className="w-3 h-3 text-blue-500" />
+                    <span className="font-medium text-gray-700">{primaryId.identifier}</span>
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Right side: Billing button + Actions menu */}
+          <div className="flex items-center gap-3">
+            {/* New Transaction Button */}
+            <button
+              onClick={() => setShowBillModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-md hover:bg-green-700 transition-colors border border-green-700 shadow-sm"
+              title="Create new bill/transaction"
+            >
+              <CreditCard className="w-3.5 h-3.5" />
+              New Transaction
+            </button>
+
+            {/* Start Visit Guide */}
+            <div className="flex items-center gap-2 text-sm font-medium text-blue-600">
+              <span>Start Visit</span>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
+              </svg>
+            </div>
+
+            {/* Actions Menu */}
+            <div className="relative" ref={menuRef}>
+              <button
+                onClick={() => setIsMenuOpen(prev => !prev)}
+                className="p-1.5 rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors border border-gray-200"
+                aria-expanded={isMenuOpen}
+                aria-label="Patient Actions Menu"
+              >
+                <Menu className="w-4 h-4" />
+              </button>
+
+              {isMenuOpen && (
+                <div className="absolute right-0 top-full mt-1 w-56 bg-white rounded-md shadow-lg border border-gray-200 z-20 animate-in fade-in slide-in-from-top-1">
+                  <div className="flex items-center justify-between px-3 py-1.5 border-b border-gray-100 bg-gray-50 rounded-t-md">
+                    <span className="text-sm font-medium text-gray-900">Actions</span>
+                    <button
+                      onClick={() => setIsMenuOpen(false)}
+                      className="text-gray-400 hover:text-gray-600 transition-colors p-0.5"
+                      aria-label="Close Menu"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                  <div className="p-1.5">
+                    <PatientActions
+                      patientUuid={patientUuid}
+                      activeVisit={activeVisit}
+                      onActionComplete={() => {
+                        onActionComplete();
+                        setIsMenuOpen(false);
+                      }}
+                    />
+                  </div>
+                </div>
               )}
             </div>
           </div>
         </div>
-
-        {/* **Added Start Visit Guide** */}
-        <div className='flex items-center gap-3'>
-       
-        <div className="flex items-center gap-2 text-sm font-medium text-blue-600">
-          <span>Start Visit</span>
-          {/* Right arrow pointing towards the menu */}
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
-          </svg>
-        </div>
-        {/* End of Added Start Visit Guide */}
-
-        {/* Actions Menu */}
-        <div className="relative" ref={menuRef}>
-          <button
-            onClick={() => setIsMenuOpen(prev => !prev)}
-            className="p-1.5 rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors border border-gray-200"
-            aria-expanded={isMenuOpen}
-            aria-label="Patient Actions Menu"
-          >
-            <Menu className="w-4 h-4" />
-          </button>
-
-          {isMenuOpen && (
-            <div className="absolute right-0 top-full mt-1 w-56 bg-white rounded-md shadow-lg border border-gray-200 z-20 animate-in fade-in slide-in-from-top-1">
-              <div className="flex items-center justify-between px-3 py-1.5 border-b border-gray-100 bg-gray-50 rounded-t-md">
-                <span className="text-sm font-medium text-gray-900">Actions</span>
-                <button
-                  onClick={() => setIsMenuOpen(false)}
-                  className="text-gray-400 hover:text-gray-600 transition-colors p-0.5"
-                  aria-label="Close Menu"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              </div>
-              <div className="p-1.5">
-                <PatientActions
-                  patientUuid={patientUuid}
-                  activeVisit={activeVisit}
-                  onActionComplete={() => {
-                    onActionComplete();
-                    setIsMenuOpen(false);
-                  }}
-                />
-              </div>
-            </div>
-          )}
-        </div>
-        </div>
       </div>
-    </div>
 
-      {/* Details Section - Slimmed down */}
+      {/* Details Section */}
       <div className="p-3">
-        {/* Quick Info Grid - Tighter spacing */}
+        {/* Quick Info Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
           <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-md border border-blue-100">
             <div className="bg-blue-100 p-1.5 rounded">
@@ -222,7 +232,7 @@ const PatientDetails: React.FC<PatientDetailsProps> = ({
           </div>
         </div>
 
-        {/* Expandable Details - Slimmer */}
+        {/* Expandable Details */}
         <div className="border-t border-gray-100 pt-2">
           <button
             onClick={() => setIsExpanded(prev => !prev)}
@@ -248,10 +258,6 @@ const PatientDetails: React.FC<PatientDetailsProps> = ({
                     <p className="text-gray-600 mb-1 text-xs">Address Line 1</p>
                     <p className="font-medium text-gray-900 text-sm">{preferredAddress.address1 || 'Not specified'}</p>
                   </div>
-                  {/* <div>
-                    <p className="text-gray-600 mb-1 text-xs">Address Line 2</p>
-                    <p className="font-medium text-gray-900 text-sm">{preferredAddress.address2 || 'Not specified'}</p>
-                  </div> */}
                   <div>
                     <p className="text-gray-600 mb-1 text-xs">City/Village</p>
                     <p className="font-medium text-gray-900 text-sm">{preferredAddress.cityVillage || 'Not specified'}</p>
@@ -278,6 +284,15 @@ const PatientDetails: React.FC<PatientDetailsProps> = ({
           </div>
         </div>
       </div>
+
+      {showBillModal && patient && (
+        <NewBillModal
+          patientUuid={patientUuid}
+          patientName={preferredName}
+          isOpen={showBillModal}
+          onClose={() => setShowBillModal(false)}
+          onBillCreated={handleBillCreated} patientId={patientUuid}        />
+      )}
     </div>
   );
 };
