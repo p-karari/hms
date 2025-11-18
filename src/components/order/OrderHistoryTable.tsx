@@ -107,10 +107,8 @@ export default function OrderHistoryTable({ patientUuid, onOrderDiscontinued }: 
     return (
         <div className="bg-white border border-gray-200 rounded-lg p-4">
             
-            {/* Filtering and Search Controls */}
             <div className="mb-4 flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-3 justify-between items-start md:items-center">
                 
-                {/* Status Filter Buttons */}
                 <div className="flex space-x-1 text-sm">
                     {(['ACTIVE', 'DISCONTINUED', 'ALL'] as const).map(type => (
                         <button
@@ -128,7 +126,6 @@ export default function OrderHistoryTable({ patientUuid, onOrderDiscontinued }: 
                     ))}
                 </div>
 
-                {/* Search Input */}
                 <div className="relative w-full md:w-1/3">
                     <input
                         type="text"
