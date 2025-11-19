@@ -2,8 +2,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, FolderOpen, Loader2, X, TrendingUp, Clock } from 'lucide-react';
-
-// --- Import built components and actions ---
 import ProgramEnrollmentList from '@/components/programs/ProgramEnrollmentList';
 import { 
     getAvailableProgramOptions, 
@@ -24,32 +22,24 @@ interface ProgramsDashboardProps {
     patientName: string;
 }
 
-// Minimal type for Program Workflow States (needed for state change)
 interface ProgramWorkflowStateOption {
     uuid: string;
     display: string;
     programUuid: string;
 }
 
-/**
- * The main container component for the patient's Program Enrollments.
- * It manages the display of the list, enrollment forms, and status updates.
- */
 export default function ProgramsDashboard({ patientUuid }: ProgramsDashboardProps) {
     
     // Core States
     const [refreshKey, setRefreshKey] = useState(0); 
-    const [isFormVisible, setIsFormVisible] = useState(false); // New Enrollment Form visibility
+    const [isFormVisible, setIsFormVisible] = useState(false); 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLoadingContext, setIsLoadingContext] = useState(false);
 
-    // Context Data
     const [availablePrograms, setAvailablePrograms] = useState<ProgramOption[]>([]);
     const [locationOptions, setLocationOptions] = useState<Array<{ uuid: string; display: string }>>([]);
-    // In a real app, program states would be fetched dynamically based on selected program.
     const [programStates, setProgramStates] = useState<ProgramWorkflowStateOption[]>([]); 
 
-    // Form Data States
     const [newEnrollmentData, setNewEnrollmentData] = useState<NewEnrollmentData>({
         patientUuid,
         programUuid: '',
@@ -67,16 +57,13 @@ export default function ProgramsDashboard({ patientUuid }: ProgramsDashboardProp
         stateStartDate: new Date().toISOString().split('T')[0],
     });
     
-    // Modal Management
     const [isExitModalOpen, setIsExitModalOpen] = useState(false);
     const [isStateModalOpen, setIsStateModalOpen] = useState(false);
 
 
-    // --- Initial Data Fetching ---
     const fetchInitialData = useCallback(async () => {
         setIsLoadingContext(true);
         try {
-            // Fetch available programs and locations
             const [programs, locations] = await Promise.all([
                 getAvailableProgramOptions(),
                 getPatientLocations(patientUuid), 
@@ -85,13 +72,10 @@ export default function ProgramsDashboard({ patientUuid }: ProgramsDashboardProp
             setAvailablePrograms(programs);
             setLocationOptions(locations.map(loc => ({ uuid: loc.uuid, display: loc.display })));
             
-            // Set default location if available
             if (locations.length > 0) {
                 setNewEnrollmentData(prev => ({ ...prev, locationUuid: locations[0].uuid }));
             }
             
-            // --- SIMPLIFIED MOCK FOR PROGRAM STATES ---
-            // In a real application, you'd fetch the specific workflows/states for each available program.
             setProgramStates([
                 { uuid: 'state-uuid-1', display: 'Active on ARVs', programUuid: programs[0]?.uuid || 'mock-program-1' },
                 { uuid: 'state-uuid-2', display: 'Lost to Follow-up', programUuid: programs[0]?.uuid || 'mock-program-1' },
@@ -100,7 +84,6 @@ export default function ProgramsDashboard({ patientUuid }: ProgramsDashboardProp
             
         } catch (error) {
             console.error("Failed to load initial data for programs:", error);
-            // Optionally set an error state here
         } finally {
             setIsLoadingContext(false);
         }
@@ -111,9 +94,6 @@ export default function ProgramsDashboard({ patientUuid }: ProgramsDashboardProp
     }, [fetchInitialData]);
 
 
-    // --- Enrollment Handlers ---
-
-    // 1. New Enrollment Submission
     const handleNewEnrollmentSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         
@@ -129,7 +109,6 @@ export default function ProgramsDashboard({ patientUuid }: ProgramsDashboardProp
             alert(`Enrolled patient in program successfully.`);
             setRefreshKey(prevKey => prevKey + 1); 
             setIsFormVisible(false);
-            // Reset form
             setNewEnrollmentData(prev => ({ 
                 ...prev, 
                 programUuid: '',
@@ -143,7 +122,6 @@ export default function ProgramsDashboard({ patientUuid }: ProgramsDashboardProp
         }
     };
     
-    // 2. Program Exit Modal Trigger
     const triggerExitProgram = (enrollmentUuid: string) => {
         setExitData(prev => ({ 
             ...prev, 
@@ -153,7 +131,6 @@ export default function ProgramsDashboard({ patientUuid }: ProgramsDashboardProp
         setIsExitModalOpen(true);
     };
 
-    // 3. Program Exit Submission
     const handleExitProgramSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!exitData.enrollmentUuid || !exitData.dateCompleted) return;
@@ -175,7 +152,6 @@ export default function ProgramsDashboard({ patientUuid }: ProgramsDashboardProp
         }
     };
     
-    // 4. Program State Change Modal Trigger
     const triggerChangeState = (enrollmentUuid: string) => {
         setStateChangeData(prev => ({ 
             ...prev, 
@@ -185,7 +161,6 @@ export default function ProgramsDashboard({ patientUuid }: ProgramsDashboardProp
         setIsStateModalOpen(true);
     };
 
-    // 5. Program State Change Submission
     const handleChangeStateSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!stateChangeData.enrollmentUuid || !stateChangeData.stateUuid) return;
@@ -207,7 +182,6 @@ export default function ProgramsDashboard({ patientUuid }: ProgramsDashboardProp
         }
     };
 
-    // --- Enrollment Form (Inline) ---
     const NewEnrollmentForm = () => (
         <div className="bg-white border border-purple-200 rounded-lg p-6 shadow-md mb-8">
             <h3 className="text-xl font-semibold text-purple-700 mb-4 flex items-center">
@@ -216,7 +190,6 @@ export default function ProgramsDashboard({ patientUuid }: ProgramsDashboardProp
             
             <form onSubmit={handleNewEnrollmentSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {/* Program Selection */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Select Program</label>
                         <select
@@ -233,7 +206,6 @@ export default function ProgramsDashboard({ patientUuid }: ProgramsDashboardProp
                         </select>
                     </div>
 
-                    {/* Enrollment Date */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Enrollment Date</label>
                         <input
@@ -246,7 +218,6 @@ export default function ProgramsDashboard({ patientUuid }: ProgramsDashboardProp
                         />
                     </div>
 
-                    {/* Location */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Enrollment Location</label>
                         <select
@@ -264,7 +235,6 @@ export default function ProgramsDashboard({ patientUuid }: ProgramsDashboardProp
                     </div>
                 </div>
 
-                {/* Submission Button */}
                 <div className="flex justify-end space-x-3 pt-2">
                     <button
                         type="button"
@@ -293,9 +263,7 @@ export default function ProgramsDashboard({ patientUuid }: ProgramsDashboardProp
         </div>
     );
     
-    // --- Program Exit Modal (Simplified) ---
     const ExitProgramModal = () => (
-        // Render a basic overlay/modal here
         isExitModalOpen && (
             <div className="fixed inset-0 backdrop-blur-sm bg-opacity-50 z-50 flex items-center justify-center p-4">
                 <div className="bg-white rounded-lg shadow-2xl p-6 w-full max-w-md">
@@ -313,11 +281,10 @@ export default function ProgramsDashboard({ patientUuid }: ProgramsDashboardProp
                                 required
                             />
                         </div>
-                        {/* Outcome/Reason for Exit: Requires fetching a specific concept set */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Exit Outcome (Optional)</label>
                             <input
-                                type="text" // Placeholder for concept selection
+                                type="text" 
                                 placeholder="e.g., Cured, Transferred, Lost to Follow-up"
                                 className="w-full border border-gray-300 rounded-lg p-2"
                                 onChange={(e) => setExitData({ ...exitData, outcomeConceptUuid: e.target.value })}
@@ -348,9 +315,7 @@ export default function ProgramsDashboard({ patientUuid }: ProgramsDashboardProp
         )
     );
 
-    // --- Program State Change Modal (Simplified) ---
     const StateChangeModal = () => (
-        // Render a basic overlay/modal here
         isStateModalOpen && (
             <div className="fixed inset-0 backdrop-blur-sm bg-opacity-50 z-50 flex items-center justify-center p-4">
                 <div className="bg-white rounded-lg shadow-2xl p-6 w-full max-w-md">
@@ -368,7 +333,6 @@ export default function ProgramsDashboard({ patientUuid }: ProgramsDashboardProp
                                 disabled={isSubmitting}
                             >
                                 <option value="">Select New State</option>
-                                {/* SIMPLIFIED: Filter states based on the program being updated */}
                                 {programStates.map(state => (
                                     <option key={state.uuid} value={state.uuid}>{state.display}</option>
                                 ))}
@@ -429,10 +393,8 @@ export default function ProgramsDashboard({ patientUuid }: ProgramsDashboardProp
                 </button>
             </div>
 
-            {/* 2. New Enrollment Form */}
             {isFormVisible && <NewEnrollmentForm />}
 
-            {/* 3. Program Enrollment List */}
             <ProgramEnrollmentList 
                 patientUuid={patientUuid} 
                 refreshKey={refreshKey}
@@ -440,7 +402,6 @@ export default function ProgramsDashboard({ patientUuid }: ProgramsDashboardProp
                 onChangeState={triggerChangeState}
             />
 
-            {/* Modals for State Updates */}
             <ExitProgramModal />
             <StateChangeModal />
         </div>
