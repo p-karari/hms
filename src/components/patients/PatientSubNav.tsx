@@ -14,6 +14,7 @@ import {
   Layers,
   Archive,
   FlaskConical,
+  CreditCard,
 } from 'lucide-react';
 
 const useSession = () => {
@@ -44,6 +45,12 @@ const patientNavigationItems = [
     label: 'Summary',
     icon: FileText,
     requiredPrivilege: 'Patient Dashboard - View Patient Summary', 
+  },
+  {
+    path: 'billing',
+    label: 'Billing',
+    icon: CreditCard,
+    requiredPrivilege: 'View Observations', 
   },
   {
     path: 'vitals',
