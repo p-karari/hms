@@ -15,23 +15,24 @@ export default function RegisterPatientForm() {
   const [relationshipTypes, setRelationshipTypes] = useState<RelationshipType[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  // 🔹 Form state
-  const [form, setForm] = useState({
-    nameKnown: true,
-    givenName: '',
-    middleName: '',
-    familyName: '',
-    gender: '',
-    dobKnown: true,
-    birthdate: '',
-    estimatedYears: '',
-    estimatedMonths: '',
-    unidentified: false,
-    address1: '',
-    cityVillage: '',
-    country: '',
-    phone: '',
-  });
+const [form, setForm] = useState({
+  nameKnown: true,
+  givenName: '',
+  middleName: '',
+  familyName: '',
+  gender: '',
+  dobKnown: true,
+  birthdate: '',
+  estimatedYears: '',
+  estimatedMonths: '',
+  unidentified: false,
+  address1: '',
+  cityVillage: '',
+  country: '',
+  telephone: '',
+  idNumber: '', 
+});
+
 
   const [relationships, setRelationships] = useState([{ relativeUuid: '', relationshipType: '' }]);
 
@@ -64,7 +65,6 @@ export default function RegisterPatientForm() {
     try {
       const formData = new FormData();
 
-      // 🧠 Name handling
       const givenName = !form.nameKnown || form.unidentified ? 'UNKNOWN' : form.givenName.trim();
       const familyName = !form.nameKnown || form.unidentified ? 'UNKNOWN' : form.familyName.trim();
 
@@ -73,7 +73,6 @@ export default function RegisterPatientForm() {
       formData.append('gender', form.gender || 'U');
       formData.append('unidentified', String(form.unidentified));
 
-      // 🧠 Birthdate / age estimate logic
       let birthdate = form.birthdate;
       if (!form.dobKnown && (form.estimatedYears || form.estimatedMonths)) {
         birthdate = calculateEstimatedBirthdate(
@@ -83,11 +82,11 @@ export default function RegisterPatientForm() {
       }
       formData.append('birthdate', birthdate || '');
 
-      // 🧠 Optional contact details
       formData.append('address1', form.address1);
       formData.append('cityVillage', form.cityVillage);
       formData.append('country', form.country);
-      formData.append('phone', form.phone);
+      formData.append('telephone', form.telephone);
+      formData.append('idNumber', form.idNumber);
 
       const patient = await createPatient(formData);
       router.push(`/dashboard/patients/${patient.uuid}`);
@@ -345,10 +344,18 @@ export default function RegisterPatientForm() {
                   <input
                     type="tel"
                     placeholder="Telephone"
-                    value={form.phone}
-                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                    value={form.telephone}
+                    onChange={(e) => setForm({ ...form, telephone: e.target.value })}
                     className="w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white placeholder:text-gray-400 text-gray-900"
                   />
+                  <input
+                    type="text"
+                    placeholder="National ID Number"
+                    value={form.idNumber}
+                    onChange={(e) => setForm({ ...form, idNumber: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white placeholder:text-gray-400 text-gray-900"
+                  />
+
                 </div>
               </div>
             </div>
