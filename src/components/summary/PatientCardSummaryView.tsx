@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { usePatientDashboard } from '@/components/context/patient-dashboard-context'; 
-import { X, ArrowRight } from 'lucide-react'; // Added ArrowRight for the link icon
+import { X, ArrowRight } from 'lucide-react';
 import { getConceptUuid } from '@/lib/config/concept'; 
 
 // Import the components you have shared
@@ -14,7 +14,7 @@ import OrderHistoryTable from '@/components/order/OrderHistoryTable';
 import ProgramEnrollmentList from '@/components/programs/ProgramEnrollmentList'; 
 import LabResultsTable from '@/components/results/LabResultsTable';
 import MedicationHistoryTable from '@/components/medications/MedicationHistoryTable';
-import VitalsHistoryCard from '@/components/vitals/VitalsHistoryCard';
+import LatestVitalsReadings from '@/components/vitals/LatestVitalsReadings';
 import VitalsForm from '@/components/vitals/VitalsForm'; 
 import AllergyListTable from '../allergies/AllergyListTable';
 
@@ -37,9 +37,8 @@ interface PatientContentProps {
 
 // Helper function to render a common card header with a link
 const CardLinkHeader: React.FC<{ title: string; route: string; patientUuid: string }> = ({ title, route, patientUuid }) => (
-    <div className="flex justify-between items-center mb-4 border-b pb-2">
+    <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-bold text-gray-700">{title}</h2>
-        {/* In a real Next.js app, replace <a> with <Link href={...}> */}
         <a 
             href={`/dashboard/patients/${patientUuid}/${route}`}
             className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center transition duration-150"
@@ -106,25 +105,22 @@ const PatientCardSummaryView: React.FC<PatientContentProps> = ({ patientUuid, cl
     
     const handleVitalsActionComplete = useCallback(() => {
         setShowVitalsForm(false);
-        onActionComplete(); // Trigger dashboard-wide refresh, including VitalsHistoryCard
+        onActionComplete(); // Trigger dashboard-wide refresh, including LatestVitalsReadings
     }, [onActionComplete]);
 
 
     return (
-        // ❌ CHANGED: Removed grid-cols, gap, lg:grid-cols-2. Using simple space-y for stacking.
         <div className="space-y-6"> 
             
-            {/* 1. Vitals Component (Now full width by default) */}
-            <div className="w-full">
-                <VitalsHistoryCard
-                    patientUuid={patientUuid} 
-                    refreshKey={refreshKey}
-                    onRecordVitals={() => setShowVitalsForm(true)}
-                />
-            </div>
+            {/* 1. Latest Vitals Component - Independent */}
+            <LatestVitalsReadings
+                patientUuid={patientUuid} 
+                refreshKey={refreshKey}
+                showRefreshButton={true}
+            />
 
-            {/* 2. Conditions Component (Now full width by default) */}
-            <div className="w-full p-4 bg-white shadow-xl rounded-xl">
+            {/* 2. Conditions Component - Independent */}
+            <div>
                 <CardLinkHeader title="Active Conditions" route="conditions" patientUuid={patientUuid} />
                 <ConditionListTable 
                     patientUuid={patientUuid} 
@@ -133,8 +129,8 @@ const PatientCardSummaryView: React.FC<PatientContentProps> = ({ patientUuid, cl
                 />
             </div>
             
-            {/* 3. Immunizations Component (Now full width by default) */}
-            <div className="w-full p-4 bg-white shadow-xl rounded-xl">
+            {/* 3. Immunizations Component - Independent */}
+            <div>
                 <CardLinkHeader title="Vaccine History" route="immunizations" patientUuid={patientUuid} />
                 <ImmunizationHistoryTable 
                     patientUuid={patientUuid} 
@@ -142,19 +138,17 @@ const PatientCardSummaryView: React.FC<PatientContentProps> = ({ patientUuid, cl
                 />
             </div>
             
-            {/* 4. Allergies Component (Now full width by default) */}
-            <div className="w-full">
-                <div className="p-4 bg-white shadow-xl rounded-xl">
-                    <CardLinkHeader title="Allergies / ADRs" route="allergies" patientUuid={patientUuid} />
-                    <AllergyListTable
-                        patientUuid={patientUuid}
-                        onRemoveAllergy={onActionComplete} 
-                    />
-                </div>
+            {/* 4. Allergies Component - Independent */}
+            <div>
+                <CardLinkHeader title="Allergies / ADRs" route="allergies" patientUuid={patientUuid} />
+                <AllergyListTable
+                    patientUuid={patientUuid}
+                    onRemoveAllergy={onActionComplete} 
+                />
             </div>
 
-            {/* 5. Program Enrollments Component (Now full width by default) */}
-            <div className="w-full p-4 bg-white shadow-xl rounded-xl">
+            {/* 5. Program Enrollments Component - Independent */}
+            <div>
                 <CardLinkHeader title="Program Enrollments" route="programs" patientUuid={patientUuid} />
                 <ProgramEnrollmentList
                     patientUuid={patientUuid}
@@ -164,8 +158,8 @@ const PatientCardSummaryView: React.FC<PatientContentProps> = ({ patientUuid, cl
                 />
             </div>
             
-            {/* 6. Orders Component (Now full width by default) */}
-            <div className="w-full p-4 bg-white shadow-xl rounded-xl">
+            {/* 6. Orders Component - Independent */}
+            <div>
                 <CardLinkHeader title="Clinical Orders" route="orders" patientUuid={patientUuid} />
                 <OrderHistoryTable 
                     patientUuid={patientUuid}
@@ -174,23 +168,21 @@ const PatientCardSummaryView: React.FC<PatientContentProps> = ({ patientUuid, cl
                 />
             </div>
 
-            <div className="w-full p-4 bg-white shadow-xl rounded-xl">
+            {/* 7. Medication History Component - Independent */}
+            <div>
                 <CardLinkHeader title="Medication History" route="medications" patientUuid={patientUuid} />
                 <MedicationHistoryTable
                     patientUuid={patientUuid}
                 />
             </div>
             
-            {/* 7. Lab Results Component (Now full width by default) */}
-            <div className="w-full p-4 bg-white shadow-xl rounded-xl">
+            {/* 8. Lab Results Component - Independent */}
+            <div>
                 <CardLinkHeader title="Lab Results History" route="results" patientUuid={patientUuid} />
                 <LabResultsTable
                     patientUuid={patientUuid}
                 />
             </div>
-
-            {/* 8. Medication History Component (Now full width by default) */}
-
             
             {/* ✅ Vitals Form Modal (Remains unchanged) */}
             {showVitalsForm && vitalsConceptMap && (
