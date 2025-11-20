@@ -3,37 +3,28 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Loader2, AlertTriangle, ChevronDown, ChevronUp, Search } from 'lucide-react';
 
-// --- Import Necessary Actions and Types ---
 import { getPatientLabResults, LabResult } from '@/lib/results/getPatientLabResults';
 import { getLabTestConcepts, LabTestConceptOption } from '@/lib/results/getLabTestConcepts';
 import { formatDate } from '@/lib/utils/utils';
-// import { formatDate, getInterpretationColor } from '@/lib/utils'; // Assuming existence of basic utility file
 
 interface LabResultsTableProps {
     patientUuid: string;
 }
 
-/**
- * Displays the patient's historical lab results with filtering and sorting capabilities.
- */
+
 export default function LabResultsTable({ patientUuid }: LabResultsTableProps) {
     const [results, setResults] = useState<LabResult[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    
-    // Filtering State
-    // const [filteredTests, setFilteredTests] = useState<LabTestConceptOption[]>([]);
     const [selectedConceptUuid, setSelectedConceptUuid] = useState<string>('');
     const [testConcepts, setTestConcepts] = useState<LabTestConceptOption[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
 
-    // Sorting State
     const [sortConfig, setSortConfig] = useState<{ key: keyof LabResult; direction: 'ascending' | 'descending' } | null>({
         key: 'obsDatetime',
         direction: 'descending',
     });
 
-    // --- Data Fetching (Results History) ---
     const fetchResults = useCallback(async () => {
         setIsLoading(true);
         setError(null);
@@ -49,10 +40,8 @@ export default function LabResultsTable({ patientUuid }: LabResultsTableProps) {
         }
     }, [patientUuid]);
 
-    // --- Data Fetching (Filter Concepts) ---
     const fetchConcepts = useCallback(async () => {
         try {
-            // Fetch a broad list of lab tests for filtering
             const concepts = await getLabTestConcepts();
             setTestConcepts(concepts);
         } catch (e) {
@@ -65,25 +54,20 @@ export default function LabResultsTable({ patientUuid }: LabResultsTableProps) {
         fetchConcepts();
     }, [fetchResults, fetchConcepts]);
 
-    // --- Filtering Logic ---
     const filteredResults = results
         .filter(result => 
-            // Filter by selected concept UUID
             !selectedConceptUuid || result.concept.uuid === selectedConceptUuid
         )
         .filter(result => 
-            // Filter by search term (on display name)
             result.display.toLowerCase().includes(searchTerm.toLowerCase())
         );
 
-    // --- Sorting Logic ---
     const sortedResults = [...filteredResults].sort((a, b) => {
         if (!sortConfig) return 0;
         
         const aValue = a[sortConfig.key];
         const bValue = b[sortConfig.key];
 
-        // Ensure date comparison is handled correctly
         if (sortConfig.key === 'obsDatetime') {
             const dateA = new Date(aValue as string).getTime();
             const dateB = new Date(bValue as string).getTime();
@@ -94,7 +78,6 @@ export default function LabResultsTable({ patientUuid }: LabResultsTableProps) {
             return dateB - dateA;
         }
 
-        // Handle string/number comparison for other fields
         if (aValue && bValue) {
         
         if (aValue < bValue) {
@@ -122,7 +105,6 @@ export default function LabResultsTable({ patientUuid }: LabResultsTableProps) {
         return sortConfig.direction === 'ascending' ? <ChevronUp className="w-3 h-3 ml-1" /> : <ChevronDown className="w-3 h-3 ml-1" />;
     };
 
-    // --- Interpretation Styling Utility (Assumed existence in /lib/utils) ---
     const getInterpretationClass = (interpretation: LabResult['interpretation']) => {
         if (!interpretation) return 'text-gray-500 bg-gray-100';
         switch (interpretation) {
@@ -146,14 +128,11 @@ export default function LabResultsTable({ patientUuid }: LabResultsTableProps) {
         );
     }
 
-    // --- Component JSX ---
     return (
         <div className="bg-white shadow-xl rounded-xl p-6">
             
-            {/* Filtering and Search Controls */}
             <div className="mb-4 flex flex-col md:flex-row space-y-3 md:space-y-0 md:space-x-4">
                 
-                {/* Test Concept Filter Dropdown */}
                 <div className="flex-1">
                     <label htmlFor="concept-filter" className="block text-sm font-medium text-gray-700 mb-1">Filter by Test</label>
                     <select
@@ -172,7 +151,6 @@ export default function LabResultsTable({ patientUuid }: LabResultsTableProps) {
                     </select>
                 </div>
 
-                {/* Search Input */}
                 <div className="flex-1">
                     <label htmlFor="search-input" className="block text-sm font-medium text-gray-700 mb-1">Search Results</label>
                     <div className="relative">
@@ -208,25 +186,21 @@ export default function LabResultsTable({ patientUuid }: LabResultsTableProps) {
                             <table className="min-w-full divide-y divide-gray-200">
                                 <thead className="bg-gray-50">
                                     <tr>
-                                        {/* Date */}
                                         <th
                                             onClick={() => requestSort('obsDatetime')}
                                             className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer flex items-center whitespace-nowrap"
                                         >
                                             Date {getSortIndicator('obsDatetime')}
                                         </th>
-                                        {/* Test Name */}
                                         <th
                                             onClick={() => requestSort('concept')}
                                             className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
                                         >
                                             Test Name {getSortIndicator('concept')}
                                         </th>
-                                        {/* Result/Value */}
                                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                             Result Value
                                         </th>
-                                        {/* Interpretation */}
                                         <th
                                             onClick={() => requestSort('interpretation')}
                                             className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
@@ -239,22 +213,18 @@ export default function LabResultsTable({ patientUuid }: LabResultsTableProps) {
                                     {sortedResults.map((result) => (
                                         <tr key={result.uuid} className="hover:bg-gray-50">
                                             
-                                            {/* Date */}
                                             <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
                                                 {formatDate(result.obsDatetime)}
                                             </td>
                                             
-                                            {/* Test Name */}
                                             <td className="px-4 py-4 text-sm text-gray-900 font-medium">
                                                 {result.concept.display}
                                             </td>
                                             
-                                            {/* Result/Value */}
                                             <td className="px-4 py-4 text-sm text-gray-700">
                                                 {result.display.split(': ')[1] || (result.valueNumeric !== null ? result.valueNumeric : result.valueText)}
                                             </td>
                                             
-                                            {/* Interpretation */}
                                             <td className="px-4 py-4 whitespace-nowrap">
                                                 <span 
                                                     className={`inline-flex px-3 py-1 text-xs leading-5 rounded-full ${getInterpretationClass(result.interpretation)}`}
@@ -266,7 +236,6 @@ export default function LabResultsTable({ patientUuid }: LabResultsTableProps) {
                                     ))}
                                 </tbody>
                             </table>
-                            {/* Pagination/Summary could go here */}
                             <div className="mt-4 text-sm text-gray-600">
                                 Displaying {sortedResults.length} of {results.length} results.
                             </div>
