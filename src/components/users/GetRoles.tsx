@@ -1,17 +1,14 @@
 // app/dashboard/admin/users/create/CreateUserPage.tsx
 
-// import { fetchAllRolesForForm } from '@/lib/openmrs/metadata'; // Adjust path
 import { fetchAllRolesForForm } from '@/lib/openmrs-api/metadata';
 import { CreateUserForm } from './CreateUserForm';
 import { AlertTriangle } from 'lucide-react';
 
-// Define a type for the role data
 export interface RoleOption {
     uuid: string;
     display: string;
 }
 
-// This is a Server Component to fetch the data
 export default async function CreateUserPage() {
     let roles: RoleOption[] = [];
     const error: string | null = null;
@@ -44,6 +41,4 @@ export default async function CreateUserPage() {
         );
     }
 
-    // Pass the fetched roles down to the client component
-    return <CreateUserForm roles={roles} />;
 }
