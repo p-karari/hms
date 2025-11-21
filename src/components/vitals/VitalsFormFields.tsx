@@ -109,24 +109,8 @@ const VitalsFormFields: React.FC<VitalsFormProps> = ({
       return;
     }
 
-    // const payload = {
-    //   patient: patientUuid,
-    //   encounterDatetime: new Date().toISOString(),
-    //   encounterType: encounterTypeUuid,
-    //   location: locationUuid,
-    //   visit: activeVisitUuid,
-    //   encounterProviders: [
-    //     {
-    //       provider: providerUuid,
-    //       encounterRole: encounterRoleUuid,
-    //     },
-    //   ],
-    //   obs: observations,
-    // };
-
     startTransition(async () => {
       try {
-        // const result = await submitEncounter(payload);
         setStatus('success');
         setMessage('Vitals submitted successfully!');
         setTimeout(() => router.push(`/dashboard/patients/${patientUuid}`), 1500);
