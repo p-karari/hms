@@ -1,7 +1,7 @@
 'use server'
 
 import { isRedirectError } from "next/dist/client/components/redirect-error";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers"; // Added 'headers' import
 import { redirect } from "next/navigation";
 
 type AuthHeaders = {
@@ -10,9 +10,13 @@ type AuthHeaders = {
     'Cookie': string;
 };
 
+// --- LOGIN ACTION ---
 export async function login(prevState: {error: string | null}, formData:FormData) {
     const username = formData.get('username') as string;
     const password = formData.get('password') as string;
+    // Extract the callback URL from the form data
+    const callbackUrl = formData.get('callbackUrl') as string | null;
+
     if (!username || !password) {
         return {error: "Username and password are required"}
     }
@@ -32,19 +36,21 @@ export async function login(prevState: {error: string | null}, formData:FormData
 
         const data = await response.json();
         if (data.authenticated) {
-        const setCookieHeader = response.headers.get("set-cookie");
-        if (setCookieHeader) {
-            const match = /JSESSIONID=([^;]+)/.exec(setCookieHeader);
-            if (match) {
-            (await cookies()).set("JSESSIONID", match[1], {
-                httpOnly: true,
-                path: "/",
-                secure: process.env.NODE_ENV === "production",
-                maxAge: 7200,
-            });
+            const setCookieHeader = response.headers.get("set-cookie");
+            if (setCookieHeader) {
+                const match = /JSESSIONID=([^;]+)/.exec(setCookieHeader);
+                if (match) {
+                    (await cookies()).set("JSESSIONID", match[1], {
+                        httpOnly: true,
+                        path: "/",
+                        secure: process.env.NODE_ENV === "production",
+                        maxAge: 7200,
+                    });
+                }
             }
-        }
-        redirect("/session-location");
+            // Use the extracted URL for redirection, or fall back to default
+            const finalRedirect = callbackUrl || "/session-location";
+            redirect(finalRedirect);
         } else {
             return {error: 'Authentication failed. Please check your credentials.'};
         }
@@ -56,18 +62,25 @@ export async function login(prevState: {error: string | null}, formData:FormData
         console.error('Login action error:', error);
         return {error: 'An unexpected error occurred during login.'};
     }
-
 }
 
+// --- AUTH HEADERS (REDIRECTION ON UNAUTHENTICATED) ---
 export async function getAuthHeaders(): Promise<AuthHeaders>{
-    const cookieStore = await cookies(); 
+    const cookieStore = await cookies();
     const jsessionid = cookieStore.get('JSESSIONID')?.value;
 
     if (!jsessionid) {
         cookieStore.delete('JSESSIONID');
-        redirect("/login");
+        
+        // Capture the protected page's path to redirect back later
+        const headersList = await headers();
+        // Use 'x-pathname' or 'x-nextjs-matched-path' to get the current route path
+        const pathname = headersList.get('x-pathname') || headersList.get('x-nextjs-matched-path') || '/';
+
+        // Redirect to login, including the current path in the query
+        redirect(`/login?callbackUrl=${encodeURIComponent(pathname)}`);
     }
-    
+
     return {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
@@ -75,22 +88,17 @@ export async function getAuthHeaders(): Promise<AuthHeaders>{
     };
 }
 
+// --- MANUAL REDIRECT TO LOGIN (SESSION EXPIRED) ---
 export async function redirectToLogin() {
+    // This function can no longer capture the current URL reliably unless passed explicitly.
+    // We'll redirect to /login directly, assuming this is called from an API error handler
+    // where the session is known to be expired, and it's simpler to send them home.
     try {
-        const cookieStore = await cookies();
-        const jsessionid = cookieStore.get('JSESSIONID')?.value;
-
-        cookieStore.delete('JSESSIONID');
-        if (!jsessionid) {
-        cookieStore.delete('JSESSIONID');
-        redirect("/login");
-    }
+        (await cookies()).delete('JSESSIONID');
     } catch (err) {
         if (isRedirectError(err)) {
             throw err;
         }
-
-        console.warn('redirectToLogin: cookies() not available in this context.', err);
     }
     redirect('/login');
 }
