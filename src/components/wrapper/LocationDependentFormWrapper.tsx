@@ -4,9 +4,7 @@ import React, { useContext } from 'react';
 import { SessionContext } from '../../lib/context/session-context';
 import { AlertTriangle, MapPin, Hospital } from 'lucide-react';
 import VitalsFormFields from '../vitals/VitalsFormFields';
-// NOTE: Removed the import for getPatientActiveVisit
 
-// --- Interface Definitions ---
 interface ConceptUuids {
   WEIGHT: string;
   HEIGHT: string;
@@ -23,32 +21,29 @@ interface LocationWrapperProps {
   encounterTypeUuid: string;
   conceptUuids: ConceptUuids;
   encounterRoleUuid: string;
-  // 💡 CHANGE: Require the active visit UUID as a prop
+
   activeVisitUuid: string | null; 
 }
 
-/**
- * Client Component — checks session, verifies location, and uses the activeVisitUuid 
- * passed down from its parent component (VitalsNewPage).
- */
+
+
 export default function LocationDependentFormWrapper({
   patientUuid,
   providerUuid,
   encounterTypeUuid,
   conceptUuids,
   encounterRoleUuid,
-  // 💡 Destructure the new required prop
+
   activeVisitUuid,
 }: LocationWrapperProps) {
   const { sessionLocation, isAuthenticated } = useContext(SessionContext);
   
-  // NOTE: Removed all useState and useEffect related to fetching activeVisit
+
 
   const locationUuid = sessionLocation?.uuid;
   const isSessionReady = isAuthenticated !== undefined;
-  const isVisitActive = !!activeVisitUuid; // ✅ Logic now depends entirely on the prop
-  
-  // 💡 Removed the `isLoadingVisit` check as it's now handled by the parent fetching
+  const isVisitActive = !!activeVisitUuid;
+
 
   if (!isSessionReady) {
     return (
@@ -59,7 +54,7 @@ export default function LocationDependentFormWrapper({
   }
 
   if (!isAuthenticated) {
-    // ... (Authentication check unchanged) ...
+
     return (
       <div className="p-6 bg-red-100 border border-red-400 text-red-800 rounded-xl">
         <p>Authentication check failed. Please log in.</p>
@@ -68,7 +63,7 @@ export default function LocationDependentFormWrapper({
   }
 
   if (!locationUuid) {
-    // ... (Location check unchanged) ...
+
     return (
       <div className="p-8 max-w-lg mx-auto bg-red-100 border-l-4 border-red-500 text-red-800 rounded-xl shadow-lg mt-10">
         <h2 className="text-2xl font-bold mb-3 flex items-center">
@@ -86,8 +81,6 @@ export default function LocationDependentFormWrapper({
     );
   }
 
-  // NOTE: Removed the `error` check related to visit lookup
-
   if (!isVisitActive) {
     return (
       <div className="p-8 max-w-lg mx-auto bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 rounded-xl shadow-lg mt-10">
@@ -103,7 +96,7 @@ export default function LocationDependentFormWrapper({
     );
   }
 
-  // ✅ All good — render the vitals form
+
   return (
     <VitalsFormFields
       patientUuid={patientUuid}
@@ -111,7 +104,7 @@ export default function LocationDependentFormWrapper({
       locationUuid={locationUuid}
       encounterTypeUuid={encounterTypeUuid}
       conceptUuids={conceptUuids}
-      activeVisitUuid={activeVisitUuid} // ⬅️ Passed the prop value
+      activeVisitUuid={activeVisitUuid} 
       encounterRoleUuid={encounterRoleUuid}
     />
   );

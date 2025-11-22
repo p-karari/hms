@@ -3,7 +3,6 @@
 import { getAuthHeaders, redirectToLogin } from '@/lib/auth/auth';
 import { ConceptReference } from '@/lib/medications/getPatientMedicationOrders'; 
 
-// Type definition for the allergenic concept options
 export type AllergenConceptOption = ConceptReference;
 
 export interface AllergenConceptLists {
