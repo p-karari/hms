@@ -13,11 +13,12 @@ function estimateBirthdate(ageYears: number, ageMonths: number = 0): string {
 
 function generateOpenMRSIdentifier(): string {
   const base = Math.floor(1000000 + Math.random() * 9000000).toString();
-  
+
   const chars = "0123456789ACDEFGHJKLMNPRTUVWXY";
   let factor = 2;
   let sum = 0;
   const n = chars.length;
+
   for (let i = base.length - 1; i >= 0; i--) {
     const codePoint = chars.indexOf(base[i]);
     let addend = factor * codePoint;
@@ -25,10 +26,11 @@ function generateOpenMRSIdentifier(): string {
     addend = Math.floor(addend / n) + (addend % n);
     sum += addend;
   }
+
   const remainder = sum % n;
   const checkCodePoint = (n - remainder) % n;
   const checkDigit = chars[checkCodePoint];
-  
+
   return base + checkDigit;
 }
 
@@ -43,12 +45,18 @@ interface NamePayload {
   familyName: string;
 }
 
+interface AttributePayload {
+  attributeType: string;
+  value: string;
+}
+
 interface PersonPayload {
   names?: NamePayload[];
   gender?: string;
   birthdate?: string;
   birthdateEstimated?: boolean;
   addresses?: AddressPayload[];
+  attributes?: AttributePayload[];
 }
 
 export async function createPatient(formData: FormData) {
@@ -66,9 +74,11 @@ export async function createPatient(formData: FormData) {
   await getOpenMRSSessionDetails();
 
   const isUnidentified = formData.get("unidentified") === "true";
+
   const givenName = isUnidentified
     ? "UNKNOWN"
     : formData.get("givenName")?.toString().trim() || "";
+
   const familyName = isUnidentified
     ? "UNKNOWN"
     : formData.get("familyName")?.toString().trim() || "";
@@ -98,6 +108,10 @@ export async function createPatient(formData: FormData) {
       ? "O"
       : "U";
 
+  // Extract person attributes
+  const telephone = formData.get("telephone")?.toString().trim() || "";
+  const idNumber = formData.get("idNumber")?.toString().trim() || "";
+
   const person: PersonPayload = {
     names: givenName && familyName ? [{ givenName, familyName }] : undefined,
     gender,
@@ -110,10 +124,23 @@ export async function createPatient(formData: FormData) {
         country: formData.get("country")?.toString() || "",
       },
     ],
+    attributes: [
+      telephone
+        ? {
+            attributeType: process.env.OPENMRS_ATTRIBUTE_TELEPHONE_UUID!,
+            value: telephone,
+          }
+        : null,
+      idNumber
+        ? {
+            attributeType: process.env.OPENMRS_ATTRIBUTE_ID_NUMBER_UUID!,
+            value: idNumber,
+          }
+        : null,
+    ].filter(Boolean) as AttributePayload[],
   };
 
   const identifierTypeUuid = "05a29f94-c0ed-11e2-94be-8c13b969e334";
-
   const validIdentifier = generateOpenMRSIdentifier();
 
   const newPatientPayload = {
@@ -144,15 +171,14 @@ export async function createPatient(formData: FormData) {
       throw new Error(`Registration failed: ${errorDetail.substring(0, 300)}...`);
     }
 
-    const json = await response.json();
-    return json;
+    return await response.json();
   } catch (error: unknown) {
     if (isRedirectError(error)) throw error;
 
-    if (error instanceof Error)
-      console.error("Error creating patient:", error.message);
-    else
-      console.error("Error creating patient (unknown type):", error);
+    console.error(
+      "Error creating patient:",
+      error instanceof Error ? error.message : error
+    );
 
     throw new Error(
       "Could not register patient due to a network or server issue."
