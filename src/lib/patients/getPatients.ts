@@ -37,6 +37,7 @@ export async function getPatients(search?: string, limit: number = 50): Promise<
     }
 
     const data = await res.json();
+    console.log('Fetched patients from OpenMRS:', JSON.stringify(data, null, 2));
     return (data.results || []) as Patient[];
   } catch (error) {
     console.error('Error fetching patients:', error);
