@@ -103,7 +103,7 @@ export async function getPatientDetails(patientUuid: string): Promise<PatientDet
     }
 
     const data = await res.json();
-    // console.log('Fetched patient details from OpenMRS:', JSON.stringify(data, null, 2));
+    console.log('Fetched patient details from OpenMRS:', JSON.stringify(data, null, 2));
 
     return data as PatientDetailsType;
 
