@@ -204,6 +204,7 @@ export async function getPatientDetails(UUID:string) {
             throw new Error(`OpenMRS API Error: HTTP ${response.status}. Detail: ${errorDetail.substring(0, 100)}...`);
         }
         const data = await response.json();
+        console.log(data);
         return data;
     } catch (error) {
         if (isRedirectError(error)) {
