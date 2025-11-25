@@ -1,16 +1,236 @@
-   {
-                "rel": "self",
-                "uri": "http://localhost:8080/openmrs/ws/rest/v1/provider/65acee3a-4f8b-445a-95c3-a6e3f4cafd89",
-                "resourceAlias": "provider"
-            }
+'use client';
 
+import { useState } from 'react';
+import { Pill, FileText, History, AlertCircle, Printer } from 'lucide-react';
+// import { fetchPrescriptionDetails } from '@/app/actions/fetch-prescription-details';
+import type { Prescription, PrescriptionAction, Condition, PrescriptionHistory } from '@/lib/pharmacy/pharmacy';
+import { fetchPrescriptionDetails } from '@/lib/pharmacy/fetch-prescription-details';
 
-------------
+interface PrescriptionDetailsProps {
+  prescription: Prescription;
+  onAction: (action: PrescriptionAction) => void;
+}
 
-Mutations, request inspect - "http://localhost:8080/openmrs/ws/rest/v1/programenrollment?patient=e8c6b2bc-e8dd-4e63-85b4-c3de2fa5368a&v=custom:(uuid,display,program,dateEnrolled,dateCompleted,location:(uuid,display),states:(startDate,endDate,voided,state:(uuid,concept:(display))))
-Request Method
-GET", response - "http://localhost:8080/openmrs/ws/rest/v1/programenrollment?patient=e8c6b2bc-e8dd-4e63-85b4-c3de2fa5368a&v=custom:(uuid,display,program,dateEnrolled,dateCompleted,location:(uuid,display),states:(startDate,endDate,voided,state:(uuid,concept:(display))))
-Request Method
-GET", delete route - "http://localhost:8080/openmrs/ws/rest/v1/programenrollment/f8a1305e-8953-4deb-b621-e7160170a8f3
-Request Method
-DELETE"
+type DetailsTab = 'details' | 'conditions' | 'history';
+
+export default function PrescriptionDetails({ prescription, onAction }: PrescriptionDetailsProps) {
+  const [activeTab, setActiveTab] = useState<DetailsTab>('details');
+  const [details, setDetails] = useState<{
+    conditions: Condition[];
+    history: PrescriptionHistory[];
+  } | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const loadDetails = async () => {
+    if (details) return;
+    
+    setIsLoading(true);
+    try {
+      const data = await fetchPrescriptionDetails({
+        prescriptionId: prescription.id,
+        patientId: prescription.patientUuid,
+        encounterId: prescription.encounterId
+      });
+      setDetails({
+        conditions: data.conditions,
+        history: data.history
+      });
+    } catch (error) {
+      console.error('Failed to load details:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleTabClick = (tab: DetailsTab) => {
+    setActiveTab(tab);
+    if (tab !== 'details') {
+      loadDetails();
+    }
+  };
+
+  return (
+    <div className="bg-gray-50 border-t border-gray-200 p-6">
+      {/* Mini Tabs */}
+      <div className="flex border-b border-gray-200 mb-6">
+        <button
+          onClick={() => handleTabClick('details')}
+          className={`pb-3 px-4 border-b-2 font-medium text-sm transition-colors ${
+            activeTab === 'details'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <Pill className="h-4 w-4" />
+            Prescription details
+          </div>
+        </button>
+        <button
+          onClick={() => handleTabClick('conditions')}
+          className={`pb-3 px-4 border-b-2 font-medium text-sm transition-colors ${
+            activeTab === 'conditions'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4" />
+            Conditions and diagnoses
+          </div>
+        </button>
+        <button
+          onClick={() => handleTabClick('history')}
+          className={`pb-3 px-4 border-b-2 font-medium text-sm transition-colors ${
+            activeTab === 'history'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <History className="h-4 w-4" />
+            History and comments
+          </div>
+        </button>
+      </div>
+
+      {/* Content */}
+      <div className="min-h-[200px]">
+        {activeTab === 'details' && (
+          <div className="space-y-6">
+            {/* Action Buttons */}
+            <div className="flex items-center gap-3">
+              <button className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg text-sm font-medium hover:bg-gray-300 transition">
+                Prescribed
+              </button>
+              <button 
+                onClick={() => onAction('dispense')}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition"
+              >
+                Dispense
+              </button>
+              <button 
+                onClick={() => onAction('pause')}
+                className="px-4 py-2 bg-yellow-600 text-white rounded-lg text-sm font-medium hover:bg-yellow-700 transition"
+              >
+                Pause
+              </button>
+              <button 
+                onClick={() => onAction('close')}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition"
+              >
+                Close
+              </button>
+              <button 
+                onClick={() => onAction('print')}
+                className="ml-auto flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
+              >
+                <Printer className="h-4 w-4" />
+                Print prescriptions
+              </button>
+            </div>
+
+            {/* Prescription Details */}
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <h4 className="text-lg font-semibold text-gray-900 mb-4">{prescription.drugs}</h4>
+              
+              <div className="space-y-4">
+                {prescription.dosage && (
+                  <div>
+                    <div className="text-sm font-medium text-gray-700 mb-1">DOSE</div>
+                    <div className="text-gray-900">
+                      {prescription.dosage.doseAndRate?.[0]?.doseQuantity?.value || 'N/A'}{' '}
+                      {prescription.dosage.doseAndRate?.[0]?.doseQuantity?.unit || ''} —{' '}
+                      {prescription.dosage.route?.text || ''} —{' '}
+                      {prescription.dosage.timing?.code?.text || ''}{' '}
+                      {prescription.dosage.timing?.repeat?.duration && 
+                       prescription.dosage.timing?.repeat?.durationUnit && 
+                       `for ${prescription.dosage.timing.repeat.duration} ${prescription.dosage.timing.repeat.durationUnit}`}
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <div className="text-sm font-medium text-gray-700 mb-1">QUANTITY</div>
+                    <div className="text-gray-900">
+                      {prescription.quantity?.value || 'N/A'} {prescription.quantity?.unit || ''}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-gray-700 mb-1">REFILLS</div>
+                    <div className="text-gray-900">{prescription.refills}</div>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-sm font-medium text-gray-700 mb-1">INSTRUCTIONS</div>
+                  <div className="text-gray-900">{prescription.instructions}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'conditions' && (
+          <div className="space-y-6">
+            {isLoading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+              </div>
+            ) : details?.conditions && details.conditions.length > 0 ? (
+              details.conditions.map((condition) => (
+                <div key={condition.id} className="bg-white rounded-lg border border-gray-200 p-4">
+                  <div className="font-medium text-gray-900">{condition.name}</div>
+                  <div className="text-sm text-gray-600 mt-1">
+                    Status: {condition.status} • Recorded: {new Date(condition.recordedDate).toLocaleDateString()}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <AlertCircle className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                <p>No conditions found for this patient</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'history' && (
+          <div className="space-y-4">
+            {isLoading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+              </div>
+            ) : details?.history && details.history.length > 0 ? (
+              details.history.map((item) => (
+                <div key={item.id} className="bg-white rounded-lg border border-gray-200 p-4">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="font-medium text-gray-900">
+                        {item.performer} • {new Date(item.date).toLocaleDateString()}
+                      </div>
+                      <div className="text-sm text-gray-600 mt-1">{item.details}</div>
+                    </div>
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${
+                      item.type === 'prescribed' ? 'bg-blue-100 text-blue-800' :
+                      item.type === 'dispensed' ? 'bg-green-100 text-green-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {item.type}
+                    </span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <History className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                <p>No history found for this prescription</p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
