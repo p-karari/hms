@@ -5,8 +5,7 @@ import {
   Package, 
   Save, 
   X, 
-  Plus, 
-  Minus,
+  Plus,
   Trash2,
   Search,
   AlertTriangle,
@@ -15,9 +14,7 @@ import {
   Calendar,
   Building,
   User,
-  FileText,
-  ChevronDown,
-  RefreshCw
+  ChevronDown
 } from 'lucide-react';
 
 import { useRouter, useSearchParams } from 'next/navigation';
