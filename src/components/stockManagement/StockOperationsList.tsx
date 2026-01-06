@@ -1,29 +1,27 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { 
-  Package, 
-  Search, 
-  Filter, 
-  Download, 
-  Eye,
-  CheckCircle,
-  XCircle,
-  Clock,
-  AlertTriangle,
-  RefreshCw,
-  ChevronLeft,
-  ChevronRight,
-  Truck,
-  ArrowUpRight,
-  ArrowDownRight,
-  FileText,
-  Plus
-} from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { searchStockOperations } from '@/lib/stockManagement/stockOperation';
 import { StockOperationSummary, StockOperationType } from '@/lib/stockManagement/stockOperationTypes';
-import { getPharmacyLocations } from '@/lib/stockManagement/pharmacyLocations';
+import {
+  AlertTriangle,
+  ArrowUpRight,
+  CheckCircle,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  Download,
+  Eye,
+  FileText,
+  Filter,
+  Package,
+  Plus,
+  RefreshCw,
+  Search,
+  Truck,
+  XCircle
+} from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import React, { useEffect, useState } from 'react';
 
 export default function StockOperationsList() {
   const router = useRouter();
@@ -57,22 +55,6 @@ export default function StockOperationsList() {
     fetchOperations();
   }, [currentPage, operationTypeFilter, statusFilter, locationFilter, dateRange]);
 
-  const fetchLocations = async () => {
-    try {
-      // Call the Server Action directly
-      const data = await getPharmacyLocations();
-      
-      // Update the locations list state
-      setLocations(data);
-      
-      // If your UI needs a default selection to trigger the first fetchOperations call:
-      if (data && data.length > 0 && !locationFilter) {
-          setLocationFilter(data[0].uuid);
-      }
-    } catch (err) {
-      console.error('Failed to load locations:', err);
-    }
-  };
 
   const fetchOperations = async () => {
     try {
