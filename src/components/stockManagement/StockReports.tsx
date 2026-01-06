@@ -1,31 +1,22 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { 
-  BarChart3,
-  TrendingUp,
-  TrendingDown,
-  Package,
+import { getPharmacyLocations } from '@/lib/stockManagement/pharmacyLocations';
+import { ConsumptionItem, ExpiryItem, StockAlert, StockLevel, StockSummary, getConsumptionReport, getExpiryItems, getStockAlerts, getStockLevels } from '@/lib/stockManagement/stockReport';
+import {
+  Activity,
+  AlertTriangle,
   Building,
-  Calendar,
+  ChevronRight,
+  Clock,
+  Database,
   Download,
   Eye,
-  Filter,
-  RefreshCw,
-  AlertTriangle,
-  DollarSign,
-  Clock,
-  PieChart,
-  LineChart,
-  Activity,
-  ChevronRight,
   FileText,
   Layers,
-  Database
+  RefreshCw
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { StockLevel, StockSummary, ExpiryItem, ConsumptionItem, StockAlert, getStockLevels, getExpiryItems, getConsumptionReport, getStockAlerts } from '@/lib/stockManagement/stockReport';
-import { getPharmacyLocations } from '@/lib/stockManagement/pharmacyLocations';
+import { useEffect, useState } from 'react';
 
 
 export default function StockReports() {
@@ -58,11 +49,7 @@ export default function StockReports() {
   }, []);
 
   // Effect to load data once a location is selected
-  useEffect(() => {
-    if (locationFilter) {
-      loadOverviewData();
-    }
-  }, [locationFilter, dateRange]);
+
 
   const fetchLocations = async () => {
     try {
@@ -99,6 +86,12 @@ export default function StockReports() {
       setLoading(prev => ({ ...prev, overview: false }));
     }
   };
+
+    useEffect(() => {
+    if (locationFilter) {
+      loadOverviewData();
+    }
+  }, [locationFilter, dateRange, loadOverviewData]);
 
   const loadStockLevels = async () => {
     setLoading(prev => ({ ...prev, stockLevels: true }));
