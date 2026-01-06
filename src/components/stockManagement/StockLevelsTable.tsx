@@ -1,26 +1,25 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { 
-  Package, 
-  Search, 
-  Filter, 
-  Download, 
+import {
   AlertTriangle,
-  Calendar,
-  TrendingDown,
-  ArrowUpRight,
   ArrowDownRight,
+  ArrowUpRight,
+  BarChart3,
+  Calendar,
   ChevronLeft,
   ChevronRight,
-  RefreshCw,
+  Download,
   Eye,
-  BarChart3
+  Package,
+  RefreshCw,
+  Search,
+  TrendingDown
 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 // import { getStockLevels, StockLevel } from '@/actions/stock-report.actions';
-import { useRouter } from 'next/navigation';
-import { getStockLevels, StockLevel } from '@/lib/stockManagement/stockReport';
 import { getPharmacyLocations } from '@/lib/stockManagement/pharmacyLocations';
+import { getStockLevels, StockLevel } from '@/lib/stockManagement/stockReport';
+import { useRouter } from 'next/navigation';
 
 export default function StockLevelsTable() {
   const router = useRouter();
@@ -317,7 +316,6 @@ export default function StockLevelsTable() {
                   {stockLevels.map((item) => {
                     const daysToExpiry = getDaysToExpiry(item.expirationDate);
                     const isExpiringSoon = daysToExpiry !== null && daysToExpiry <= 30;
-                    const isCritical = item.belowReorderLevel || item.isExpired;
 
                     return (
                       <tr key={`${item.stockItemUuid}-${item.locationUuid}-${item.batchNumber || 'default'}`} className="hover:bg-gray-50 transition">
