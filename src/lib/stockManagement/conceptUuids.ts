@@ -275,7 +275,7 @@ export async function getDrugCategories(
   // Common drug category classes
   const categoryClasses = ['Drug', 'Medication', 'Pharmaceutical', 'Therapeutic Class', 'Drug Class'];
   
-  let allCategories: Concept[] = [];
+  const allCategories: Concept[] = [];
   
   for (const categoryClass of categoryClasses) {
     const result = await searchConcepts(searchTerm, categoryClass, limit);
