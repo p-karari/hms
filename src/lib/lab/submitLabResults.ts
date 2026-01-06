@@ -4,7 +4,7 @@
 import { getAuthHeaders, redirectToLogin } from '@/lib/auth/auth';
 import { updateOrderStatus } from './updateOrderStatus';
 import { createEncounterForOrder } from './createEncounter';
-import { LabResultSubmission, LabResultField } from './lab-order';
+import { LabResultSubmission } from './lab-order';
 
 export async function submitLabResults(
   data: LabResultSubmission
