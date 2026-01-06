@@ -1,7 +1,6 @@
 'use server';
 
 import { getAuthHeaders, redirectToLogin } from '@/lib/auth/auth';
-import { revalidatePath } from 'next/cache';
 
 // ==================== TYPES & INTERFACES ====================
 
