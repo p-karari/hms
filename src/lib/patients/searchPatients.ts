@@ -50,7 +50,7 @@ export async function searchPatients(query: string = '', limit: number = 20): Pr
   }
 
   // 1. Clean the query: Remove spaces/dashes common in phone numbers
-  let cleanQuery = query.trim().replace(/[-\s]/g, '');
+  const cleanQuery = query.trim().replace(/[-\s]/g, '');
   if (!cleanQuery) return [];
 
   const baseUrl = `${process.env.OPENMRS_API_URL}/patient`;
@@ -58,7 +58,7 @@ export async function searchPatients(query: string = '', limit: number = 20): Pr
 
   try {
     // Attempt 1: Standard search
-    let res = await fetch(`${baseUrl}?q=${cleanQuery}&limit=${limit}&${representation}`, { headers });
+    const res = await fetch(`${baseUrl}?q=${cleanQuery}&limit=${limit}&${representation}`, { headers });
     let data = await res.json();
 
     // Attempt 2: Fallback for Integer attributes (strip leading zero)
@@ -93,7 +93,7 @@ export async function getPhoneNumber(patient: ListPatient): Promise<string> {
   const val = typeof phoneAttr.value === 'object' ? phoneAttr.value?.display : phoneAttr.value;
   
   // Ensure we return a string and re-add the leading zero if it looks like a phone number but is missing it
-  let finalVal = String(val ?? 'N/A');
+  const finalVal = String(val ?? 'N/A');
   if (finalVal !== 'N/A' && finalVal.length >= 9 && !finalVal.startsWith('0')) {
     return `0${finalVal}`;
   }
