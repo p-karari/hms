@@ -1,33 +1,30 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { 
-  Package, 
-  Save, 
-  X, 
-  CheckCircle,
+import {
   AlertTriangle,
-  Loader2,
-  Calendar,
   Building,
-  Search,
-  RefreshCw,
-  FileText,
-  Clock,
   Calculator,
-  ChevronRight,
+  Calendar,
+  CheckCircle,
   ChevronLeft,
+  ChevronRight,
+  Clock,
   Download,
-  Filter,
-  Eye
+  FileText,
+  Loader2,
+  Package,
+  Search,
+  X
 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 
-import { Plus, Minus } from 'lucide-react';import {  StockTakeSession as StockTakeSessionType, completeStockTakeSession, createStockTakeSession, getStockTakeSession, startStockTakeSession, updateStockTakeItem } from '@/lib/stockManagement/stockTake';
+import { StockTakeSession as StockTakeSessionType, completeStockTakeSession, createStockTakeSession, getStockTakeSession, startStockTakeSession, updateStockTakeItem } from '@/lib/stockManagement/stockTake';
+import { Minus, Plus } from 'lucide-react';
 
 
-import { useRouter, useParams } from 'next/navigation';
 import { getPharmacyLocations } from '@/lib/stockManagement/pharmacyLocations';
+import { useParams, useRouter } from 'next/navigation';
 
 export default function StockTakeSessionComponent() {
   const router = useRouter();
@@ -48,25 +45,7 @@ export default function StockTakeSessionComponent() {
   const isEditMode = !!sessionId;
 
 // Load initial data
-  useEffect(() => {
-    fetchLocations();
-    if (sessionId) {
-      loadSession();
-    }
-  }, [sessionId]);
-
-  const fetchLocations = async () => {
-    try {
-      // Direct call to the FHIR-based Server Action
-      const data = await getPharmacyLocations();
-      
-      // Update state with mapped { uuid, display } objects
-      setLocations(data);
-    } catch (err) {
-      console.error('Failed to load locations:', err);
-    }
-  };
-
+useEffect(() => {
   const loadSession = async () => {
     if (!sessionId) return;
 
@@ -86,6 +65,25 @@ export default function StockTakeSessionComponent() {
       setFetching(false);
     }
   };
+
+  fetchLocations();
+  if (sessionId) {
+    loadSession();
+  }
+}, [sessionId]);
+
+  const fetchLocations = async () => {
+    try {
+      // Direct call to the FHIR-based Server Action
+      const data = await getPharmacyLocations();
+      
+      // Update state with mapped { uuid, display } objects
+      setLocations(data);
+    } catch (err) {
+      console.error('Failed to load locations:', err);
+    }
+  };
+
 
   const handleCreateSession = async () => {
     try {
