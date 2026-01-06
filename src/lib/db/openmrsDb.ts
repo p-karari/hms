@@ -68,7 +68,7 @@ export const db = {
    */
 async execute(sql: string, params: any[] = []): Promise<[any[], any]> {
   const connection = transactionConnection || await getOpenmrsDb().getConnection();
-  let releaseConnection = transactionConnection === null;
+  const releaseConnection = transactionConnection === null;
 
   try {
     const isSelect = sql.trim().toUpperCase().startsWith('SELECT');
