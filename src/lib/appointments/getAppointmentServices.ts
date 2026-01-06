@@ -1,6 +1,6 @@
 'use server';
 
-import { redirectToLogin, getAuthHeaders } from '../auth/auth'; 
+import { getAuthHeaders, redirectToLogin } from '../auth/auth';
 
 // --- TYPE DEFINITIONS ---
 
@@ -15,6 +15,14 @@ interface ServiceType {
     uuid: string;
 }
 
+// Location interface based on common OpenMRS location structure
+interface Location {
+    uuid: string;
+    display?: string;
+    name?: string;
+    [key: string]: unknown; // Allow additional properties
+}
+
 // Defines the structure for a single Appointment Service (using the 'full' representation)
 export interface AppointmentService {
     appointmentServiceId: number;
@@ -24,7 +32,7 @@ export interface AppointmentService {
     startTime: string; 
     endTime: string;   
     durationMins: number | null; 
-    location: {}; 
+    location: Location; // Changed from {} to proper Location interface
     uuid: string;
     color: string;
     weeklyAvailability: any[]; 
