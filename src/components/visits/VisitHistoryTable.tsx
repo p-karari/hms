@@ -2,11 +2,11 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
-    Loader2, AlertTriangle, Calendar, Clock, ChevronDown, ChevronUp,
-    Stethoscope, Package, FileText, Pill, TestTube
+    Loader2, AlertTriangle, Calendar, ChevronDown, ChevronUp,
+    Stethoscope, FileText, Pill, TestTube
 } from 'lucide-react';
 import { formatDate } from '@/lib/utils/utils'; 
-import { Encounter, getPatientVisitsWithEncounters, VisitWithEncounters, Diagnosis, Observation, Order } from '@/lib/visits/getVisitEncounters';
+import { getPatientVisitsWithEncounters, VisitWithEncounters, Diagnosis } from '@/lib/visits/getVisitEncounters';
 
 interface VisitHistoryTableProps {
     patientUuid: string;
