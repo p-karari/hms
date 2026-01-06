@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { ChevronDown, ChevronUp, User, Trash2, Edit2, Loader2, Mail, Fingerprint, LogIn, Users, Calendar } from 'lucide-react';
+import { ChevronDown, ChevronUp, User, Trash2, Edit2, Loader2, Mail, Fingerprint, LogIn } from 'lucide-react';
 import React from 'react';
 import { ManagedUser } from '@/lib/users/fetchUsers';
 import { retireUser } from '@/lib/users/updateUsers';
