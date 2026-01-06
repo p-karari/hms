@@ -2,7 +2,7 @@
 'use server';
 import { v4 as uuidv4 } from 'uuid'; // Assuming you use a UUID generator
 import { runSql, runSqlFlat } from '../db/openmrsDb';
-import { CashierBillableService, CashierDepartment, CashierItem } from './services/billingServices';
+import { CashierDepartment, CashierItem } from './services/billingServices';
 
 // --- 2. DEPARTMENT MANAGEMENT ---
 
