@@ -1,30 +1,29 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { 
-  FileText, 
-  Search, 
-  Filter, 
-  Download, 
-  Eye,
-  CheckCircle,
-  XCircle,
-  Clock,
+import {
   AlertTriangle,
-  RefreshCw,
+  BarChart3,
+  Calendar,
+  CheckCircle,
   ChevronLeft,
   ChevronRight,
-  Calendar,
-  Building,
-  BarChart3,
+  Clock,
+  Download,
+  Eye,
+  FileText,
+  Filter,
   Plus,
+  RefreshCw,
+  Search,
+  TrendingDown,
   TrendingUp,
-  TrendingDown
+  XCircle
 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 // import { searchStockTakeSessions, StockTakeSession } from '@/actions/stock-take.actions';
-import { useRouter } from 'next/navigation';
-import { StockTakeSession, searchStockTakeSessions } from '@/lib/stockManagement/stockTake';
 import { getPharmacyLocations } from '@/lib/stockManagement/pharmacyLocations';
+import { StockTakeSession, searchStockTakeSessions } from '@/lib/stockManagement/stockTake';
+import { useRouter } from 'next/navigation';
 
 export default function StockTakeList() {
   const router = useRouter();
@@ -41,15 +40,8 @@ export default function StockTakeList() {
   const itemsPerPage = 20;
 
 // Load initial data
-  useEffect(() => {
-    fetchLocations();
-  }, []);
-
-  // Fetch sessions - re-runs when locationFilter or other filters change
-  useEffect(() => {
-    fetchSessions();
-  }, [currentPage, statusFilter, locationFilter, dateRange]);
-
+// Load initial data
+useEffect(() => {
   const fetchLocations = async () => {
     try {
       // Call the Server Action directly
@@ -66,6 +58,47 @@ export default function StockTakeList() {
       console.error('Failed to load locations:', err);
     }
   };
+
+  fetchLocations();
+}, [locationFilter]);
+
+  // Fetch sessions - re-runs when locationFilter or other filters change
+// Fetch sessions - re-runs when locationFilter or other filters change
+useEffect(() => {
+  const fetchSessions = async () => {
+    try {
+;
+      setError('');
+
+      const filters: any = {
+        searchQuery: searchQuery || undefined,
+        status: statusFilter || undefined,
+        locationUuid: locationFilter || undefined,
+        operationDateFrom: dateRange.start || undefined,
+        operationDateTo: dateRange.end || undefined,
+        startIndex: (currentPage - 1) * itemsPerPage,
+        limit: itemsPerPage
+      };
+
+      const result = await searchStockTakeSessions(filters);
+
+      if (result.success && result.data) {
+        setSessions(result.data);
+        setTotalCount(result.totalCount || result.data.length);
+      } else {
+        throw new Error(result.message);
+      }
+    } catch (err) {
+      setError('Failed to load stock take sessions');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchSessions();
+}, [currentPage, statusFilter, locationFilter, dateRange.start, dateRange.end, searchQuery]);
+
 
   const fetchSessions = async () => {
     try {
