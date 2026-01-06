@@ -1,7 +1,6 @@
 // app/dashboard/admin/users/create/CreateUserPage.tsx
 
 import { fetchAllRolesForForm } from '@/lib/openmrs-api/metadata';
-import { CreateUserForm } from './CreateUserForm';
 import { AlertTriangle } from 'lucide-react';
 
 export interface RoleOption {
