@@ -2,7 +2,7 @@
 'use client';
 
 import { useFormState, useFormStatus } from 'react-dom';
-import { Loader2, UserPlus, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
+import { Loader2, UserPlus, AlertTriangle } from 'lucide-react';
 import { createUserAndProvider } from '@/lib/users/users'; 
 import { RoleOption } from './GetRoles';
 // import { RoleOption } from '@/lib/openmrs-api/metadata'; // Import RoleOption from metadata file
