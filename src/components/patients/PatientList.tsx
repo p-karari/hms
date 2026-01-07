@@ -1,19 +1,19 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo, useContext } from 'react';
-import { useRouter } from 'next/navigation';
-import { Loader2, BedDouble, Calendar, Users, Search, Clock, User, Phone, ChevronRight } from 'lucide-react';
-import { 
-  searchPatients, 
-  ListPatient,
-  getOpenMRSId,
-  getPatientName,
-  getPhoneNumber 
-} from '../../lib/patients/searchPatients'; 
-import { getAppointmentsTodayCount } from '../../lib/appointments/manageAppointments'; 
-import { getDashboardVisitData, VisitDetail } from '../../lib/visits/getDashboardVisitData'; 
 import { SessionContext } from '@/lib/context/session-context';
 import { getDailyVisitStats, VisitSummary } from '@/lib/visits/getADaysVisits';
+import { BedDouble, Calendar, ChevronRight, Clock, Loader2, Phone, Search, User, Users } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { getAppointmentsTodayCount } from '../../lib/appointments/manageAppointments';
+import {
+  getOpenMRSId,
+  getPatientName,
+  getPhoneNumber,
+  ListPatient,
+  searchPatients
+} from '../../lib/patients/searchPatients';
+import { getDashboardVisitData, VisitDetail } from '../../lib/visits/getDashboardVisitData';
 
 interface VisitResult {
   uuid: string;
@@ -305,7 +305,7 @@ const getLinkUuid = (item: DisplayItem): string => {
     };
 
     fetchData();
-  }, [getTabData.data]);
+  }, [getTabData.data, openmrsIdMap, nameMap, phoneMap]);
 
   // Date/time helper for visits
 const getDateTimeDisplay = (item: DisplayItem): { date: string, time: string } => {
