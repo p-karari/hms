@@ -1,33 +1,30 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { 
-  AlertTriangle, 
-  AlertCircle, 
+import {
+  AlertCircle,
   AlertOctagon,
+  AlertTriangle,
   Bell,
-  CheckCircle,
-  XCircle,
-  TrendingUp,
-  TrendingDown,
-  Package,
+  BellRing,
   Building,
-  Calendar,
-  Filter,
-  Download,
-  RefreshCw,
-  Eye,
+  CheckCircle,
   ChevronDown,
   ChevronUp,
   Clock,
-  DollarSign,
+  Download,
+  Eye,
+  Package,
+  RefreshCw,
   ShoppingCart,
-  BellRing
+  TrendingDown,
+  TrendingUp,
+  XCircle
 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
-import { useRouter } from 'next/navigation';
-import { getStockAlerts, StockAlert } from '@/lib/stockManagement/stockReport';
 import { getPharmacyLocations } from '@/lib/stockManagement/pharmacyLocations';
+import { getStockAlerts, StockAlert } from '@/lib/stockManagement/stockReport';
+import { useRouter } from 'next/navigation';
 
 export default function StockAlerts() {
   const router = useRouter();
@@ -43,10 +40,7 @@ export default function StockAlerts() {
   const [expandedAlerts, setExpandedAlerts] = useState<Set<string>>(new Set());
 
 // Load initial data
-  useEffect(() => {
-    fetchLocations();
-    fetchAlerts();
-  }, []);
+
 
   const fetchLocations = async () => {
     try {
@@ -82,6 +76,12 @@ export default function StockAlerts() {
       setLoading(false);
     }
   };
+
+    useEffect(() => {
+    fetchLocations();
+    fetchAlerts();
+  }, [fetchAlerts]);
+  
 
   const handleAcknowledge = async (alertId: string, stockItemUuid: string) => {
     try {
