@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronDown, User, Calendar, FileText, Package } from 'lucide-react';
+import { ChevronDown, User, Calendar, Package } from 'lucide-react';
 import { formatDate, getStatusBadgeClass, getStatusLabel } from '@/lib/pharmacy/pharmacy';
 import type { PrescriptionTableProps, Prescription, PrescriptionAction } from '@/lib/pharmacy/pharmacy';
 import PrescriptionDetails from './PrescriptionDetails';
