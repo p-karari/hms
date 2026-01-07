@@ -1,28 +1,26 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { 
-  Calendar, 
-  Search, 
-  Filter, 
-  Download, 
+import {
   AlertTriangle,
-  Clock,
-  XCircle,
-  CheckCircle,
-  TrendingDown,
-  Package,
+  BarChart3,
   Building,
+  Calendar,
+  CheckCircle,
   ChevronLeft,
   ChevronRight,
+  Clock,
+  Download,
   Eye,
-  BarChart3,
-  RefreshCw
+  Package,
+  RefreshCw,
+  TrendingDown,
+  XCircle
 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 // import { getExpiryItems, ExpiryItem } from '@/actions/stock-report.actions';
-import { useRouter } from 'next/navigation';
-import { ExpiryItem, getExpiryItems } from '@/lib/stockManagement/stockReport';
 import { getPharmacyLocations } from '@/lib/stockManagement/pharmacyLocations';
+import { ExpiryItem, getExpiryItems } from '@/lib/stockManagement/stockReport';
+import { useRouter } from 'next/navigation';
 
 export default function ExpiryReport() {
   const router = useRouter();
@@ -43,10 +41,7 @@ export default function ExpiryReport() {
     fetchLocations();
   }, []);
 
-  // Fetch expiry items
-  useEffect(() => {
-    fetchExpiryItems();
-  }, [currentPage, locationFilter, expiryStatusFilter, daysThreshold]);
+
 
   const fetchLocations = async () => {
     try {
@@ -88,6 +83,11 @@ export default function ExpiryReport() {
       setLoading(false);
     }
   };
+
+    // Fetch expiry items
+  useEffect(() => {
+    fetchExpiryItems();
+  }, [currentPage, locationFilter, expiryStatusFilter, daysThreshold, fetchExpiryItems]);
 
   const handleExport = async () => {
     try {
