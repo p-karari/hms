@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { 
   BarChart3, 
   Search, 
-  Filter, 
   Download, 
   TrendingUp,
   TrendingDown,
@@ -84,7 +83,7 @@ const fetchLocations = async () => {
 
       if (result.success && result.data) {
         // Sort data
-        let sortedData = [...result.data];
+        const sortedData = [...result.data];
         switch (sortBy) {
           case 'consumption':
             sortedData.sort((a, b) => b.totalConsumption - a.totalConsumption);
