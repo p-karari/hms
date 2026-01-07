@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react';
 import { 
   Pill, FileText, History, AlertCircle, Printer, 
-  CheckSquare, Square, MoreVertical, Edit2, Trash2 
+  CheckSquare, Square 
 } from 'lucide-react';
 import type { Prescription, PrescriptionAction, Condition, PrescriptionHistory } from '@/lib/pharmacy/pharmacy';
 import { fetchPrescriptionDetails } from '@/lib/pharmacy/fetch-prescription-details';
