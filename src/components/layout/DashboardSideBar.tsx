@@ -2,9 +2,8 @@
 
 import React, { useMemo } from 'react';
 import {
-  Home, Users, Calendar, BedDouble, ClipboardList,
-  FlaskConical, CreditCard, FileText, UserCog, Settings, LogOut,
-  MapPin, BookOpen, ChevronRight, Menu, X, Package
+  Home, Users, Calendar, ClipboardList,
+  FlaskConical, CreditCard, ChevronRight, Menu, X
 } from 'lucide-react';
 
 const useMockSession = () => {
