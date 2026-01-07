@@ -2,7 +2,7 @@
 
 import { PatientReportRow } from '@/lib/reports/types';
 import React from 'react';
-import { FileText, User, MapPin, Pill, DollarSign, CreditCard } from 'lucide-react';
+import { FileText, User, MapPin, Pill, CreditCard } from 'lucide-react';
 
 interface ReportTableProps {
     data: PatientReportRow[];
