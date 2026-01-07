@@ -1,25 +1,21 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  Package, 
-  Save, 
-  X, 
-  DollarSign,
-  Tag,
-  AlertTriangle,
-  Check,
-  Search,
-  Calendar,
-  Settings,
-  BarChart3,
-  Loader2
-} from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { getUOMConcepts } from '@/lib/stockManagement/conceptUuids';
 import { getDrugs } from '@/lib/stockManagement/getDrugs';
 import { getStockCategories } from '@/lib/stockManagement/getStockCategories';
-import { getUOMConcepts } from '@/lib/stockManagement/conceptUuids';
-import { getStockItemDirect, createStockItemDirect } from '@/lib/stockManagement/stockItem';
+import { createStockItemDirect, getStockItemDirect } from '@/lib/stockManagement/stockItem';
+import {
+  AlertTriangle,
+  BarChart3,
+  Check,
+  DollarSign,
+  Loader2,
+  Package,
+  Save,
+  Search
+} from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import React, { useEffect, useState } from 'react';
 
 export default function StockItemForm({ 
   itemUuid 
@@ -79,13 +75,7 @@ export default function StockItemForm({
 
   const isEditMode = !!itemUuid;
 
-  // Load initial data
-  useEffect(() => {
-    loadInitialData();
-    if (itemUuid) {
-      loadStockItem();
-    }
-  }, [itemUuid]);
+
 
   // Debounced drug search
   useEffect(() => {
@@ -183,6 +173,15 @@ const loadStockItem = async () => {
     setFetching(false);
   }
 };
+
+  // Load initial data
+  useEffect(() => {
+    loadInitialData();
+    if (itemUuid) {
+      loadStockItem();
+    }
+  }, [itemUuid, loadStockItem]);
+  
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
