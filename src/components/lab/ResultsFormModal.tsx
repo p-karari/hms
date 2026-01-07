@@ -4,7 +4,7 @@
 import { getTestFormFields } from '@/lib/lab/getConceptDetails';
 import { LabResultSubmission } from '@/lib/lab/lab-order';
 import { submitLabResults } from '@/lib/lab/submitLabResults';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 
 interface ResultsFormModalProps {
@@ -19,11 +19,32 @@ export default function ResultsFormModal({ order, isOpen, onClose }: ResultsForm
   const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState<Record<string, any>>({});
 
-  useEffect(() => {
-    if (isOpen && order?.concept?.uuid) {
-      loadFormFields();
+useEffect(() => {
+  const loadFormFields = async () => {
+    setLoading(true);
+    try {
+      const result = await getTestFormFields(order.concept.uuid);
+      if (result.fields) {
+        setFormFields(result.fields);
+        
+        // Initialize form data
+        const initialData: Record<string, any> = {};
+        result.fields.forEach((field: any) => {
+          initialData[field.conceptUuid] = '';
+        });
+        setFormData(initialData);
+      }
+    } catch (error) {
+      console.error('Failed to load form fields:', error);
+    } finally {
+      setLoading(false);
     }
-  }, [isOpen, order]);
+  };
+
+  if (isOpen && order?.concept?.uuid) {
+    loadFormFields();
+  }
+}, [isOpen, order]);
 
   const loadFormFields = async () => {
     setLoading(true);
