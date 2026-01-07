@@ -2,7 +2,7 @@
 'use client';
 
 import { getOrderResults } from '@/lib/lab/getOrderResults';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 interface ResultsViewModalProps {
   order: any;
@@ -14,11 +14,23 @@ export default function ResultsViewModal({ order, isOpen, onClose }: ResultsView
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (isOpen && order?.uuid) {
-      loadResults();
+useEffect(() => {
+  const loadResults = async () => {
+    setLoading(true);
+    try {
+      const result = await getOrderResults(order.uuid);
+      setResults(result.results || []);
+    } catch (error) {
+      console.error('Failed to load results:', error);
+    } finally {
+      setLoading(false);
     }
-  }, [isOpen, order]);
+  };
+
+  if (isOpen && order?.uuid) {
+    loadResults();
+  }
+}, [isOpen, order]);
 
   const loadResults = async () => {
     setLoading(true);
