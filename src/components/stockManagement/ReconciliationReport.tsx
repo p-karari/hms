@@ -1,36 +1,28 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
 import {
-  Scale,
-  CheckCircle,
-  XCircle,
+  AlertCircle,
   AlertTriangle,
-  TrendingUp,
-  TrendingDown,
-  Calculator,
   Building,
+  Calculator,
   Calendar,
-  Download,
-  RefreshCw,
-  Eye,
+  CheckCircle,
   ChevronDown,
   ChevronUp,
-  Filter,
-  Search,
-  BarChart3,
+  Download,
+  Eye,
   Package,
-  Clock,
-  DollarSign,
-  FileText,
-  Save,
-  Send,
-  AlertCircle
+  RefreshCw,
+  Scale,
+  TrendingDown,
+  TrendingUp,
+  XCircle
 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 
-import { useRouter } from 'next/navigation';
-import { ReconciliationReport, BatchReconciliation, ReconciliationItem, ReconciliationPeriod, reconcileDispensingWithStock, getBatchReconciliation, resolveReconciliationVariance } from '@/lib/stockManagement/stockReconcilliation';
 import { getPharmacyLocations } from '@/lib/stockManagement/pharmacyLocations';
+import { BatchReconciliation, ReconciliationItem, ReconciliationPeriod, ReconciliationReport, getBatchReconciliation, reconcileDispensingWithStock, resolveReconciliationVariance } from '@/lib/stockManagement/stockReconcilliation';
+import { useRouter } from 'next/navigation';
 
 export default function ReconciliationReportPage() {
   const router = useRouter();
@@ -51,11 +43,7 @@ export default function ReconciliationReportPage() {
   const [resolutionType, setResolutionType] = useState<'ADJUSTMENT' | 'WRITE_OFF' | 'CORRECTION' | 'OTHER'>('ADJUSTMENT');
   const [resolving, setResolving] = useState(false);
 
-// Load initial data
-  useEffect(() => {
-    fetchLocations();
-    setDefaultDates();
-  }, []);
+
 
   const fetchLocations = async () => {
     try {
@@ -73,6 +61,12 @@ export default function ReconciliationReportPage() {
       console.error('Failed to load locations:', err);
     }
   };
+
+  // Load initial data
+  useEffect(() => {
+    fetchLocations();
+    setDefaultDates();
+  }, [fetchLocations]);
 
   const setDefaultDates = () => {
     const today = new Date();
