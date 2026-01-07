@@ -1,24 +1,24 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { 
-  Package, 
-  TrendingDown, 
-  Clock, 
-  AlertTriangle, 
-  RefreshCw,
-  Building,
+import { getPharmacyLocations } from '@/lib/stockManagement/pharmacyLocations';
+import { StockAlert, StockSummary, getStockAlerts, getStockLevels } from '@/lib/stockManagement/stockReport';
+import {
+  AlertTriangle,
+  ArrowUpRight,
   BarChart3,
+  Building,
+  CheckCircle,
+  ChevronRight,
+  Clock,
   Download,
   Filter,
-  ChevronRight,
-  ArrowUpRight,
-  ArrowDownRight,
-  CheckCircle,
+  Link,
+  Package,
+  RefreshCw,
+  TrendingDown,
   XCircle
 } from 'lucide-react';
-import { StockSummary, StockAlert, getStockLevels, getStockAlerts } from '@/lib/stockManagement/stockReport';
-import { getPharmacyLocations } from '@/lib/stockManagement/pharmacyLocations';
+import { useCallback, useEffect, useState } from 'react';
 // import { getStockLevels, getStockAlerts, StockSummary, StockAlert } from '@/actions/stock-report.actions';
 
 export default function StockDashboard() {
@@ -34,19 +34,14 @@ export default function StockDashboard() {
   const [error, setError] = useState<string>('');
 
   // Fetch locations on component mount
-  useEffect(() => {
-    fetchLocations();
-  }, []);
+
 
   // Fetch summary and alerts when location changes
-  useEffect(() => {
-    if (selectedLocation) {
-      fetchSummary();
-      fetchAlerts();
-    }
-  }, [selectedLocation]);
 
-const fetchLocations = async () => {
+
+
+
+const fetchLocations = useCallback(async () => {
     try {
       setLoading(prev => ({ ...prev, locations: true }));
       setError(''); // Clear previous errors
@@ -72,9 +67,9 @@ const fetchLocations = async () => {
     } finally {
       setLoading(prev => ({ ...prev, locations: false }));
     }
-  };
+  }, [selectedLocation]); // Add selectedLocation as dependency since it's used in the function
 
-  const fetchSummary = async () => {
+const fetchSummary = useCallback(async () => {
     try {
       setLoading(prev => ({ ...prev, summary: true }));
       const result = await getStockLevels({
@@ -93,9 +88,9 @@ const fetchLocations = async () => {
     } finally {
       setLoading(prev => ({ ...prev, summary: false }));
     }
-  };
+  }, [selectedLocation]); // Add selectedLocation as dependency since it's used in the function
 
-  const fetchAlerts = async () => {
+const fetchAlerts = useCallback(async () => {
     try {
       setLoading(prev => ({ ...prev, alerts: true }));
       const result = await getStockAlerts({
@@ -113,7 +108,19 @@ const fetchLocations = async () => {
     } finally {
       setLoading(prev => ({ ...prev, alerts: false }));
     }
-  };
+  }, [selectedLocation]); // Add selectedLocation as dependency since it's used in the function
+
+// Then update the useEffect to use the memoized functions
+useEffect(() => {
+    fetchLocations();
+  }, [fetchLocations]);
+
+useEffect(() => {
+    if (selectedLocation) {
+      fetchSummary();
+      fetchAlerts();
+    }
+  }, [selectedLocation, fetchSummary, fetchAlerts]);
 
   const handleRefresh = () => {
     if (selectedLocation) {
@@ -417,7 +424,7 @@ const fetchLocations = async () => {
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
           <div className="space-y-3">
-            <a href="/stockManagement/items/new" className="block w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition">
+            <Link href="/stockManagement/items/new" className="block w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition">
               <div className="flex items-center">
                 <div className="p-2 bg-blue-100 rounded-lg mr-3">
                   <Package className="h-5 w-5 text-blue-600" />
@@ -427,8 +434,8 @@ const fetchLocations = async () => {
                   <p className="text-sm text-gray-500">Register new medication</p>
                 </div>
               </div>
-            </a>
-            <a href="/stockManagement/operations/new?type=adjustment" className="block w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition">
+            </Link>
+            <Link href="/stockManagement/operations/new?type=adjustment" className="block w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition">
               <div className="flex items-center">
                 <div className="p-2 bg-green-100 rounded-lg mr-3">
                   <RefreshCw className="h-5 w-5 text-green-600" />
@@ -438,8 +445,8 @@ const fetchLocations = async () => {
                   <p className="text-sm text-gray-500">Add or remove stock</p>
                 </div>
               </div>
-            </a>
-            <a href="/pharmacy/stock/stocktakes/new" className="block w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition">
+            </Link>
+            <Link href="/pharmacy/stock/stocktakes/new" className="block w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition">
               <div className="flex items-center">
                 <div className="p-2 bg-purple-100 rounded-lg mr-3">
                   <BarChart3 className="h-5 w-5 text-purple-600" />
@@ -449,7 +456,7 @@ const fetchLocations = async () => {
                   <p className="text-sm text-gray-500">Physical inventory count</p>
                 </div>
               </div>
-            </a>
+            </Link>
           </div>
         </div>
 
