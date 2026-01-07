@@ -3,7 +3,7 @@
 
 import { getLabOrders } from '@/lib/lab/getLabOrders';
 import { OrderStatus } from '@/lib/lab/lab-order';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import OrderRow from './OrderRow';
 
 
@@ -49,7 +49,7 @@ export default function OrdersTable({
     };
 
     fetchOrders();
-  }, [status, dateRange]);
+  }, [status, dateRange, onCountsUpdate, orders.length]);
 
   // Filter orders by search query
   const filteredOrders = orders.filter(order => {
