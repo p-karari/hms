@@ -1,34 +1,31 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { 
-  Package, 
-  Search, 
-  Filter, 
-  Plus, 
-  Edit, 
-  Trash2, 
-  Eye,
+import { StockItem } from '@/lib/stockManagement/stockItem'; // Your updated interface
+import { deleteStockItemDirect, searchStockItemsDirect } from '@/lib/stockManagement/stockItemDirect';
+import {
+  AlertTriangle,
+  Calendar,
+  CheckCircle,
+  CheckSquare,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
-  AlertTriangle,
-  CheckCircle,
-  Download,
-  MoreVertical,
-  Tag,
   DollarSign,
-  Calendar,
-  Loader2,
-  RefreshCw,
+  Download,
+  Edit,
+  Eye,
   Grid,
   List,
-  ChevronDown,
-  CheckSquare,
-  Square
+  Loader2,
+  Package,
+  Plus,
+  RefreshCw,
+  Search,
+  Square,
+  Trash2
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { StockItem } from '@/lib/stockManagement/stockItem'; // Your updated interface
-import { searchStockItemsDirect, deleteStockItemDirect } from '@/lib/stockManagement/stockItemDirect';
+import React, { useEffect, useState } from 'react';
 // Import your new database actions
 // import { searchStockItemsDirect, deleteStockItemDirect } from '@/lib/stockManagement/stockItemDirect';
 
@@ -43,13 +40,11 @@ export default function StockItemList() {
   const [totalCount, setTotalCount] = useState(0);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [sortBy, setSortBy] = useState<'name' | 'date' | 'price'>('name');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [sortOrder] = useState<'asc' | 'desc'>('asc');
   const itemsPerPage = 15;
 
   // Fetch stock items
-  useEffect(() => {
-    fetchStockItems();
-  }, [currentPage, searchQuery, sortBy, sortOrder]);
+
 
   const fetchStockItems = async () => {
     try {
@@ -77,7 +72,9 @@ export default function StockItemList() {
       setLoading(false);
     }
   };
-
+  useEffect(() => {
+    fetchStockItems();
+  }, [currentPage, searchQuery, sortBy, sortOrder, fetchStockItems]);
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setCurrentPage(1);
