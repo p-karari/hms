@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Eye, DollarSign, X, Loader2 } from 'lucide-react';
 import { getPatientBills, voidBill } from '@/lib/billing/patientBilling/billActions';
+import { DollarSign, Eye, Loader2, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 
 interface Bill {
@@ -27,9 +27,22 @@ export default function BillsHistoryTab({ patientUuid }: BillsHistoryTabProps) {
   const [showVoidModal, setShowVoidModal] = useState(false);
   const [voidReason, setVoidReason] = useState('');
 
-  useEffect(() => {
-    loadBills();
-  }, [patientUuid]);
+useEffect(() => {
+  const loadBills = async () => {
+    setLoading(true);
+    try {
+      const billsData = await getPatientBills(patientUuid);
+      setBills(billsData);
+    } catch (error) {
+      console.error('Failed to load bills:', error);
+      alert('Failed to load bills');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  loadBills();
+}, [patientUuid]);
 
   const loadBills = async () => {
     setLoading(true);
