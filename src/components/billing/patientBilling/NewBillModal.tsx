@@ -1,15 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { X, Plus, Search, Loader2, Trash2 } from 'lucide-react';
 import { searchBillableItems } from '@/lib/billing/manageBillableItems';
+import { Loader2, Plus, Search, Trash2, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 // The following two are no longer used in handleCreateBill, but kept if other functions use them.
-import { createBill } from '@/lib/billing/patientBilling/billActions';
-import { addBillItem } from '@/lib/billing/patientBilling/billItemActions';
 import { getCurrentCashPoint } from '@/lib/billing/patientBilling/cashPointActions';
 import { processPayment } from '@/lib/billing/patientBilling/paymentActions';
-import { getPaymentModes } from '@/lib/reports/paymentModeReport';
 import { useSession } from '@/lib/context/useSession';
+import { getPaymentModes } from '@/lib/reports/paymentModeReport';
 // Use the new atomic action
 import { createBillWithLineItems, LineItemData } from '@/lib/billing/patientBilling/billActions';
 
@@ -61,7 +59,7 @@ interface PaymentMode {
 export default function NewBillModal({
   patientUuid,
   patientName,
-  patientId,
+  // patientId,
   isOpen,
   onClose,
   onBillCreated
@@ -84,7 +82,7 @@ export default function NewBillModal({
   const subtotal = lineItems.reduce((sum, item) => sum + item.total, 0);
   const tax = 0; // Add tax logic if needed
   const total = subtotal + tax;
-
+console.log(activeStep);
   // Initialize
   useEffect(() => {
     if (isOpen) {
