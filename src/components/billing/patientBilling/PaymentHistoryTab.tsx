@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Loader2, CreditCard, DollarSign } from 'lucide-react';
 import { getPatientPayments, getPatientPaymentSummary } from '@/lib/billing/patientBilling/getPatientPayments';
+import { CreditCard, DollarSign, Loader2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 interface Payment {
   bill_payment_id: number;
@@ -31,9 +31,27 @@ export default function PaymentHistoryTab({ patientUuid }: PaymentHistoryTabProp
   const [summary, setSummary] = useState<PaymentSummary | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadPayments();
-  }, [patientUuid]);
+useEffect(() => {
+  const loadPayments = async () => {
+    setLoading(true);
+    try {
+      const [paymentsData, summaryData] = await Promise.all([
+        getPatientPayments(patientUuid),
+        getPatientPaymentSummary(patientUuid)
+      ]);
+      
+      setPayments(paymentsData);
+      setSummary(summaryData);
+    } catch (error) {
+      console.error('Failed to load payments:', error);
+      alert('Failed to load payment history');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  loadPayments();
+}, [patientUuid]);
 
   const loadPayments = async () => {
     setLoading(true);
