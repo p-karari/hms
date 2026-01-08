@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useTransition, useCallback } from 'react';
+import React, { useState, useEffect, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppointmentData } from '@/lib/appointments/checkAppointmentConflicts';
 import { getAppointmentLocations, Location } from '@/lib/appointments/getAppointmentLocations';
