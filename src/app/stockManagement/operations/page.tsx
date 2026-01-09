@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import StockOperationsList from '@/components/stockManagement/StockOperationsList';
-import { Plus, RefreshCw, ArrowRight } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import Link from 'next/link';
 
 export default function OperationsPage() {
