@@ -1,23 +1,20 @@
 'use client';
 
-import React, { useState } from 'react';
-import { 
-  FileText, 
-  Calendar, 
-  TrendingUp, 
-  AlertTriangle,
-  Download,
-  Filter,
-  RefreshCw
-} from 'lucide-react';
-import ExpiryReport from '@/components/stockManagement/ExpiryReport';
 import ConsumptionReport from '@/components/stockManagement/ConsumptionReport';
+import ExpiryReport from '@/components/stockManagement/ExpiryReport';
 import ReconciliationReport from '@/components/stockManagement/ReconciliationReport';
+import {
+  AlertTriangle,
+  Calendar,
+  Download,
+  TrendingUp
+} from 'lucide-react';
+import { useState } from 'react';
 
 export default function ReportsPage() {
   const [activeTab, setActiveTab] = useState<'expiry' | 'consumption' | 'reconciliation'>('expiry');
   const [dateRange, setDateRange] = useState({ from: '', to: '' });
-  const [loading, setLoading] = useState(false);
+  // const [loading, setLoading] = useState(false);
 
   const tabs = [
     { id: 'expiry', label: 'Expiry Report', icon: Calendar, component: ExpiryReport },
