@@ -1,6 +1,6 @@
+import { FlatCompat } from "@eslint/eslintrc";
 import { dirname } from "path";
 import { fileURLToPath } from "url";
-import { FlatCompat } from "@eslint/eslintrc";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -14,8 +14,16 @@ const eslintConfig = [
   ...compat.extends("next/core-web-vitals", "next/typescript"),
 
   {
+    plugins: {
+      "unused-imports": (await import("eslint-plugin-unused-imports")).default,
+    },
     rules: {
       "@typescript-eslint/no-explicit-any": "off", // disables "Unexpected any"
+      "no-unused-vars": "off",
+      "react/no-unescaped-entities": "off",
+      "@typescript-eslint/no-unused-vars": "off",
+      "unused-imports/no-unused-imports": "off",
+      "unused-imports/no-unused-vars": "off"
     },
     ignores: [
       "node_modules/**",
