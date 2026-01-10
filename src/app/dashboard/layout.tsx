@@ -12,15 +12,31 @@ export default async function DashboardLayout({
 }>) {
 
   const session = await getOpenMRSSessionDetails();
-  const coreData = await getOpenMRSSessionDetails();
   const privileges = session.authenticated
     ? await getPrivilegesForUser(session.user.uuid)
     : [];
   
+  // Transform to match SessionContextType structure
   const initialSession = {
-    ...coreData,
-    privileges,
-    isAuthenticated: coreData.authenticated,
+    isAuthenticated: session.authenticated,
+    authenticated: session.authenticated,
+    user: {
+      uuid: session.user.uuid,
+      display: session.user.display, // Keep as-is for now
+      username: null, // Not available in current API
+      systemId: session.user.uuid, // Fallback to UUID
+      person: {
+        uuid: session.user.uuid, // Person UUID not available, use user UUID
+        display: session.user.display,
+      },
+      roles: session.user.roles,
+      privileges: privileges.map(p => ({ uuid: '', display: p })), // Convert string[] to {uuid, display}[]
+      userProperties: {},
+    },
+    sessionLocation: session.sessionLocation,
+    locale: 'en',
+    allowedLocales: ['en'],
+    privileges: privileges, // Keep the string array as separate property if needed
   };
   
   return (
