@@ -1,11 +1,11 @@
 // src/pages/dashboard/patients/PatientsListPage.tsx
 'use client';
 
+import ActiveVisitDashboard from '@/components/patients/PatientList';
 import React, { useState } from 'react';
-import ActiveVisitDashboard from '@/components/patients/PatientList'; 
 
 const PatientsListPage: React.FC = () => {
-  const [currentQuery, setCurrentQuery] = useState<string>('');
+  const [currentQuery] = useState<string>('');
 
   
 
