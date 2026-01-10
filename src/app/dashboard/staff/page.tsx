@@ -1,14 +1,14 @@
 // app/dashboard/admin/users/page.tsx
 'use client';
 
-import { useState, useEffect, useTransition } from 'react';
-import { Loader2, UserPlus, AlertTriangle, XCircle, Users, Shield, RefreshCw } from 'lucide-react';
-import { getAllUsers, ManagedUser } from '@/lib/users/fetchUsers';
-import { RoleOption } from '@/components/users/GetRoles';
-import { fetchAllRolesForForm } from '@/lib/openmrs-api/metadata';
-import UserTable from '@/components/users/UserTable';
 import { CreateUserForm } from '@/components/users/CreateUserForm';
 import { EditUserForm } from '@/components/users/EditUserForm';
+import { RoleOption } from '@/components/users/GetRoles';
+import UserTable from '@/components/users/UserTable';
+import { fetchAllRolesForForm } from '@/lib/openmrs-api/metadata';
+import { getAllUsers, ManagedUser } from '@/lib/users/fetchUsers';
+import { AlertTriangle, Loader2, RefreshCw, Shield, UserPlus, Users, XCircle } from 'lucide-react';
+import { useCallback, useEffect, useState, useTransition } from 'react';
 
 // Define state for the forms/modals
 type FormMode = 'create' | 'edit' | null;
@@ -24,7 +24,7 @@ export default function UserManagementPage() {
     const [editingUser, setEditingUser] = useState<ManagedUser | null>(null);
 
     // --- Data Fetching ---
-    const fetchAllData = () => {
+    const fetchAllData = useCallback(() => {
         setLoading(true);
         setError(null);
         startTransition(async () => {
@@ -46,11 +46,11 @@ export default function UserManagementPage() {
                 setLoading(false);
             }
         });
-    };
+    }, [roles.length]); // Add dependencies if any variables are used inside
 
     useEffect(() => {
         fetchAllData();
-    }, []);
+    }, [fetchAllData]);
 
     // --- Modal Handlers ---
     const handleOpenCreate = () => {
