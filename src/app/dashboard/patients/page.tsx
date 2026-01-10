@@ -1,12 +1,12 @@
 // src/pages/dashboard/patients/PatientsListPage.tsx
 'use client';
 
-import React, { useState } from 'react';
+import ActiveVisitDashboard from '@/components/patients/PatientList';
 import Link from 'next/link';
-import ActiveVisitDashboard from '@/components/patients/PatientList'; 
+import React, { useState } from 'react';
 
 const PatientsListPage: React.FC = () => {
-  const [currentQuery, setCurrentQuery] = useState<string>('');
+  const [currentQuery] = useState<string>('');
 
   
   const getDisplayMessage = () => {
