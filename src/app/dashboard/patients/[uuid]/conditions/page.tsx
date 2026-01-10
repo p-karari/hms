@@ -1,19 +1,19 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { useParams } from 'next/navigation';
 import ConditionsDashboard from '@/components/conditions/ConditionDashboard';
+import { PatientDashboardProvider } from '@/components/context/patient-dashboard-context';
 import PatientDetails from '@/components/patients/PatientDetails';
 import { getPatientDetails } from '@/lib/patients/getPatientDetails';
-import { getPatientActiveVisit } from '@/lib/visits/getActiveVisit';
 import { Visit } from '@/lib/patients/manageVisits';
-import { PatientDashboardProvider } from '@/components/context/patient-dashboard-context';
+import { getPatientActiveVisit } from '@/lib/visits/getActiveVisit';
+import { useParams } from 'next/navigation';
+import React, { useCallback, useEffect, useState } from 'react';
 
 const ConditionsPage: React.FC = () => {
   const params = useParams();
   const patientUuid = (params as any).uuid as string;
 
-  const [patientDetails, setPatientDetails] = useState<any>(null);
+  const [setPatientDetails] = useState<any>(null);
   const [activeVisit, setActiveVisit] = useState<Visit | null>(null);
   const [dataVersion, setDataVersion] = useState(0);
   const [isLoadingVisit, setIsLoadingVisit] = useState(true);
@@ -29,7 +29,7 @@ const ConditionsPage: React.FC = () => {
       }
     };
     if (patientUuid) fetchDetails();
-  }, [patientUuid]);
+  }, [patientUuid, setPatientDetails]);
 
   // --- Fetch active visit ---
   useEffect(() => {
