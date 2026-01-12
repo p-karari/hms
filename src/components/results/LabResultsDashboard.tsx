@@ -1,8 +1,7 @@
 'use client';
 
-import React from 'react';
-import { AlertTriangle, TrendingUp } from 'lucide-react';
 import LabResultsTable from '@/components/results/LabResultsTable';
+import { AlertTriangle, TrendingUp } from 'lucide-react';
 import AllergyAlertBanner from '../medications/AllergyAlertBanner';
 
 
@@ -18,9 +17,7 @@ export default function LabResultsDashboard({ patientUuid, hasKnownAllergies }: 
 
     return (
         <div className="space-y-6">
-            <h1 className="text-3xl font-extrabold text-gray-900 border-b pb-2">
-                Lab Results History
-            </h1>
+
             
             {hasKnownAllergies && (
                 <AllergyAlertBanner patientUuid={patientUuid} />
