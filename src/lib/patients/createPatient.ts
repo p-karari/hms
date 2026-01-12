@@ -60,6 +60,7 @@ interface PersonPayload {
 }
 
 export async function createPatient(formData: FormData) {
+  console.log("Form Data Submitted:", Object.fromEntries(formData.entries()));
   const baseUrl = process.env.OPENMRS_API_URL;
   const url = `${baseUrl}/patient`;
 
@@ -98,13 +99,13 @@ export async function createPatient(formData: FormData) {
       ? true
       : false;
 
-  const genderRaw = formData.get("gender")?.toString().toLowerCase();
+  const genderRaw = formData.get("gender")?.toString().toUpperCase();
   const gender =
-    genderRaw === "male"
+    genderRaw === "M" || genderRaw === "MALE"
       ? "M"
-      : genderRaw === "female"
+      : genderRaw === "F" || genderRaw === "FEMALE"
       ? "F"
-      : genderRaw === "other"
+      : genderRaw === "O" || genderRaw === "OTHER"
       ? "O"
       : "U";
 
