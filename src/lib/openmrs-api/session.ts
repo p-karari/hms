@@ -40,7 +40,7 @@ export interface UserWithPrivileges{
 }
 
 export async function getOpenMRSSessionDetails() {
-    console.log("getOpenMRSSession details function called")
+    // console.log("getOpenMRSSession details function called")
     const url = `${process.env.OPENMRS_API_URL}/session`;
     const cookieStore = await cookies();
     const jsessionid = cookieStore.get('JSESSIONID')?.value
@@ -61,7 +61,7 @@ export async function getOpenMRSSessionDetails() {
         });
         if (!response.ok) {
             if (response.status === 401 || response.status === 403) {
-                cookieStore.delete('JSESSIONID');
+                // cookieStore.delete('JSESSIONID');
                 // redirect('/login');
                 return NOT_AUTHENTICATED_SESSION
             }
@@ -87,7 +87,7 @@ export async function getOpenMRSSessionDetails() {
 }
 
 export async function getPrivilegesForUser(UUID:string) {
-    console.log("getPrivilegesForUser function is running")
+    // console.log("getPrivilegesForUser function is running")
     const url = `${process.env.OPENMRS_API_URL}/user/${UUID}?v=full&v=custom:(roles:full)`;
     const CookieStore = await cookies();
     const jsessionid = CookieStore.get('JSESSIONID')?.value;
@@ -106,7 +106,7 @@ export async function getPrivilegesForUser(UUID:string) {
         })
         if (!response.ok) {
             if (response.status === 401 || response.status === 403) {
-                CookieStore.delete('JSESSIONID');
+                // CookieStore.delete('JSESSIONID');
                 return [];
             }
             throw new Error("Failed to fetch privileges" + response.status)
@@ -122,7 +122,7 @@ export async function getPrivilegesForUser(UUID:string) {
             });
         });
 
-        console.log("getPrivilegesForUser is done running")
+        // console.log("getPrivilegesForUser is done running")
 
         return Array.from(allPrivileges);
     } catch (error) {
