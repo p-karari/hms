@@ -42,46 +42,47 @@ export async function getRelationshipTypes() {
       }
 }
 
-export async function createRelationship(formData: FormData) {
-    const url = `${process.env.OPENMRS_API_URL}\relationship`
-    let headers;
-    try {
-        headers = await getAuthHeaders()
-    } catch (error) {
-        redirectToLogin()
-        console.error(error)
-    }
+export async function createRelationship(formData: FormData, patientUuid: string) {
+  const baseUrl = process.env.OPENMRS_API_URL;
+  const headers = await getAuthHeaders();
 
-    const NewRelationshipPayload = {
-        personA: formData.get('personA'),
-        personB: formData.get('personB'),
-        relationshipType: formData.get('relationshipType'),
+  let relatedPersonUuid = formData.get('relatedPersonUuid')?.toString();
+  const relationshipType = formData.get('relationshipType')?.toString();
+
+  // 1. If no existing UUID, create a new Person record for the relative first
+  if (!relatedPersonUuid && formData.get('relatedGivenName')) {
+    const personPayload = {
+      names: [{ 
+        givenName: formData.get('relatedGivenName'), 
+        familyName: formData.get('relatedFamilyName') 
+      }],
+      gender: formData.get('relatedGender') || 'U',
     };
 
-    try {
-    const response = await fetch((url), {
-        method: 'POST',
-        headers: {
-            ...headers,
-            'Application-Type': 'application/json',
-            Accept: 'application/json'
-        },
-        body: JSON.stringify(NewRelationshipPayload)
+    const personRes = await fetch(`${baseUrl}/person`, {
+      method: "POST",
+      headers: { ...headers, "Content-Type": "application/json" },
+      body: JSON.stringify(personPayload),
     });
-        if (!response.ok) {
-            if (response.status === 401 || response.status === 403) {
-                redirectToLogin();
-            }
-            const errorDetail = await response.text();
-            console.error(errorDetail)
-            throw new Error(`Relationship creation failed: ${errorDetail}`)
-        }
-        const data = await response.json();
-        return data;
-    } catch (error) {
-        if (isRedirectError(error)) throw error;
-        throw new Error("Could not create relationship due to a server or network issue")
-    }
-
     
+    const personData = await personRes.json();
+    relatedPersonUuid = personData.uuid;
+  }
+
+  if (!relatedPersonUuid || !relationshipType) return null;
+
+  // 2. Create the relationship link
+  const relationshipPayload = {
+    personA: relatedPersonUuid, // The Relative
+    personB: patientUuid,       // The New Patient
+    relationshipType: relationshipType,
+  };
+
+  const response = await fetch(`${baseUrl}/relationship`, {
+    method: "POST",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify(relationshipPayload),
+  });
+
+  return await response.json();
 }
