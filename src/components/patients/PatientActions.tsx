@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useContext } from 'react';
-import Link from 'next/link';
-import { SessionContext } from '../../lib/context/session-context';
 import { CodedValue } from '@/lib/patients/getPatientObservations';
 import { getVisitTypes } from '@/lib/patients/getVisitTypes';
 import { Visit, createVisit, updateVisit } from '@/lib/patients/manageVisits';
-import { Plus, X, Activity, FileText } from 'lucide-react';
+import { Activity, FileText, Plus, X } from 'lucide-react';
+import Link from 'next/link';
+import React, { useContext, useEffect, useState } from 'react';
+import { SessionContext } from '../../lib/context/session-context';
 import ClinicalNotesModal from '../encounters/ClinicalNotesModal';
 
 interface PatientActionsProps {
