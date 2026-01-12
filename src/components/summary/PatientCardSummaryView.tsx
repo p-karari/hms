@@ -2,20 +2,20 @@
 
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { usePatientDashboard } from '@/components/context/patient-dashboard-context'; 
-import { X, ArrowRight } from 'lucide-react';
-import { getConceptUuid } from '@/lib/config/concept'; 
+import { usePatientDashboard } from '@/components/context/patient-dashboard-context';
+import { getConceptUuid } from '@/lib/config/concept';
+import { ArrowRight, X } from 'lucide-react';
+import React, { useCallback, useEffect, useState } from 'react';
 
 // Import the components you have shared
-import ConditionListTable from '@/components/conditions/ConditionListTable'; 
-import ImmunizationHistoryTable from '@/components/immunizations/ImmunizationHistoryTable'; 
-import OrderHistoryTable from '@/components/order/OrderHistoryTable'; 
-import ProgramEnrollmentList from '@/components/programs/ProgramEnrollmentList'; 
-import LabResultsTable from '@/components/results/LabResultsTable';
+import ConditionListTable from '@/components/conditions/ConditionListTable';
+import ImmunizationHistoryTable from '@/components/immunizations/ImmunizationHistoryTable';
 import MedicationHistoryTable from '@/components/medications/MedicationHistoryTable';
+import OrderHistoryTable from '@/components/order/OrderHistoryTable';
+import ProgramEnrollmentList from '@/components/programs/ProgramEnrollmentList';
+import LabResultsTable from '@/components/results/LabResultsTable';
 import LatestVitalsReadings from '@/components/vitals/LatestVitalsReadings';
-import VitalsForm from '@/components/vitals/VitalsForm'; 
+import VitalsForm from '@/components/vitals/VitalsForm';
 import AllergyListTable from '../allergies/AllergyListTable';
 
 // Define types needed for Vitals integration
@@ -178,7 +178,7 @@ const PatientCardSummaryView: React.FC<PatientContentProps> = ({ patientUuid, cl
             
             {/* 8. Lab Results Component - Independent */}
             <div>
-                <CardLinkHeader title="Lab Results History" route="results" patientUuid={patientUuid} />
+                <CardLinkHeader title="Results History" route="results" patientUuid={patientUuid} />
                 <LabResultsTable
                     patientUuid={patientUuid}
                 />
